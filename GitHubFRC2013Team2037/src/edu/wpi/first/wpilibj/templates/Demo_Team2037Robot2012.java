@@ -20,7 +20,7 @@ import edu.wpi.first.wpilibj.*;
  * creating this project, you must also update the manifest file in the resource
  * directory.
  */
-public class Team2037Robot2012 extends SimpleRobot {
+public class Demo_Team2037Robot2012 extends SimpleRobot {
     Gyro RoboGyro = new Gyro(1);
     AnalogChannel TempSensor = new AnalogChannel(2);
     Joystick Xbox = new Joystick(1);

@@ -30,7 +30,7 @@ import edu.wpi.first.wpilibj.image.NIVision.Rect;
  * chain (open it with the Vision Assistant)
  */
 
-public class VisionSampleProject2013 extends SimpleRobot {
+public class Demo_VisionSampleProject2013 extends SimpleRobot {
 
     final int XMAXSIZE = 24;
     final int XMINSIZE = 24;

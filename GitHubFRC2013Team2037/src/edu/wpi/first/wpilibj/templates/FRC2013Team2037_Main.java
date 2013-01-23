@@ -212,19 +212,21 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     }
 }
-
+//                      Our BASE FTC Robot movement code. For reference. will remove once we test the Mecanum setup.
 //
-//                        #pragma config (Hubs ,  S1 , HTMotor ,  HTMotor ,  HTServo ,  HTServo ) 
-//                        #pragma config (Sensor , S2 ,     legoRBG ,        sensorCOLORBLUE ) 
-//                        #pragma config (Sensor , S3 ,     irSeekerSensor , sensorHiTechnicIRSeeker1200 ) 
-//                        #pragma config (Sensor , S4 ,     compassSensor ,  sensorI2CHiTechnicCompass ) 
-//                        #pragma config (Motor ,  motorA ,           ,             tmotorNXT , PIDControl ) 
-//                        #pragma config (Motor ,  motorB ,           ,             tmotorNXT , PIDControl ) 
-//                        #pragma config (Motor ,  motorC ,           ,             tmotorNXT , PIDControl ) 
-//                        #pragma config (Motor ,  mtr_S1_C1_1 ,     frontRightMotor , tmotorTetrix , openLoop ) 
-//                        #pragma config (Motor ,  mtr_S1_C1_2 ,     backRightMotor , tmotorTetrix , openLoop ) 
-//                        #pragma config (Motor ,  mtr_S1_C2_1 ,     frontLeftMotor , tmotorTetrix , openLoop , reversed ) 
-//                        #pragma config (Motor ,  mtr_S1_C2_2 ,     backLeftMotor , tmotorTetrix , openLoop , reversed )
+//
+//
+//                        #pragma config (Hubs ,  S1 , HTMotor ,  HTMotor ,  HTServo ,  HTServo) 
+//                        #pragma config (Sensor , S2 ,     legoRBG ,        sensorCOLORBLUE) 
+//                        #pragma config (Sensor , S3 ,     irSeekerSensor , sensorHiTechnicIRSeeker1200) 
+//                        #pragma config (Sensor , S4 ,     compassSensor ,  sensorI2CHiTechnicCompass) 
+//                        #pragma config (Motor ,  motorA ,           ,             tmotorNXT , PIDControl) 
+//                        #pragma config (Motor ,  motorB ,           ,             tmotorNXT , PIDControl) 
+//                        #pragma config (Motor ,  motorC ,           ,             tmotorNXT , PIDControl) 
+//                        #pragma config (Motor ,  mtr_S1_C1_1 ,     frontRightMotor , tmotorTetrix , openLoop) 
+//                        #pragma config (Motor ,  mtr_S1_C1_2 ,     backRightMotor , tmotorTetrix , openLoop) 
+//                        #pragma config (Motor ,  mtr_S1_C2_1 ,     frontLeftMotor , tmotorTetrix , openLoop , reversed) 
+//                        #pragma config (Motor ,  mtr_S1_C2_2 ,     backLeftMotor , tmotorTetrix , openLoop , reversed)
 //
 //
 //                        #pragma debuggerWindows("joystickSimple"); 
