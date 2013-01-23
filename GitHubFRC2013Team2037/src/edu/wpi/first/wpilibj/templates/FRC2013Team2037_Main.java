@@ -9,7 +9,11 @@ package edu.wpi.first.wpilibj.templates;
 
 
 
-     /* --Xbox Controller buttons
+    /* --Xbox Controller buttons
+     * 
+     * &- means 0 to -1
+     * &+ means 0 to 1
+     * 
      * Left Stick = Axis 1,2 (1 is L- R+, 2 is U- D+)
      * Right Stick = Axis 4,5 (4 is L- R+, 5 is U- D+)
      * Left Paddle = Axis 3 +
