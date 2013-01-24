@@ -51,6 +51,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     double m_rotation;
     
     
+    public void robotInit() {
+
+    }
+
+    
     /**
      * This function is called once each time the robot enters autonomous mode.
      */
