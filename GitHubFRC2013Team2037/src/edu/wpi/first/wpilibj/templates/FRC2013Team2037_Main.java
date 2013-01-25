@@ -45,7 +45,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     Joystick m_xBox1 = new Joystick(1);  //driver joystick, controller 1
     Joystick m_xBox2 = new Joystick(2);  //shooter joystick, controller 2
-    RobotDrive m_mecanumDrive = new RobotDrive(1,2,3,4);    
+    RobotDrive m_mecanumDrive = new RobotDrive(1,2,3,4); 
+    private int slot = 2;
+    DigitalInput m_testSwitch = new DigitalInput(slot, 1);
+    
+    
+    //Global Variables
     double m_magnitude;
     double m_direction;
     double m_rotation;
@@ -60,8 +65,18 @@ public class FRC2013Team2037_Main extends SimpleRobot {
      * This function is called once each time the robot enters autonomous mode.
      */
     public void autonomous() {
+        m_magnitude = 0;
+        m_direction = 0;
+        m_rotation = 0;
+            
         while (isAutonomous() && isEnabled()) {
-            Timer.delay(1);
+            m_mecanumDrive.isSafetyEnabled();
+            
+             m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
+             
+            
+            System.out.println("Switch says.... " + m_testSwitch.get());
+            Timer.delay(.01);
         }
     }
 
@@ -207,7 +222,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 //            magnitude = leftStick.getMagnitude();
 //            direction = leftStick.getDirectionDegrees();
 //            rotation = rightStick.getX();
-                
+            System.out.println("Switch says.... " + m_testSwitch.get());
+            
             m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
         
         }
