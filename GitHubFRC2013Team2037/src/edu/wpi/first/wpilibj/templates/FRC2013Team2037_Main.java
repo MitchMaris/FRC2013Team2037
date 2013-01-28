@@ -8,6 +8,25 @@
 package edu.wpi.first.wpilibj.templates;
 
 
+    /* Current plug cofig
+     * 
+     * -- PWM
+     * 1. Front Left
+     * 2. Front Right
+     * 3. Rear Right
+     * 4. Rear Left
+     * 
+     * -- Spike
+     * 1. m_spikeRelay
+     * 
+     * -- Digital
+     * 1. m_microSwitch
+     * 
+     * -- Analog
+     * 1. m_gyro
+     * 
+     */
+
 
     /* --Xbox Controller buttons
      * 
@@ -45,19 +64,26 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     Joystick m_xBox1 = new Joystick(1);  //driver joystick, controller 1
     Joystick m_xBox2 = new Joystick(2);  //shooter joystick, controller 2
-    RobotDrive m_mecanumDrive = new RobotDrive(1,2,3,4); 
-    private int slot = 2;
-    DigitalInput m_testSwitch = new DigitalInput(slot, 1);
+    RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3); 
+    DigitalInput m_microSwitch = new DigitalInput(1);
+    Gyro m_gyro = new Gyro(1);
+    Relay m_spikeRelay = new Relay(1);
     
     
     //Global Variables
     double m_magnitude;
     double m_direction;
-    double m_rotation;
+    double m_rotation;             
+//    double m_change;      for temp    
+    //double m_temperature; for temp
+    double m_gyroDataStart;
+    double m_gyroDataCurrent;
     
     
     public void robotInit() {
-
+        m_spikeRelay.set(Relay.Value.kOff);
+        m_gyro.reset();
+        Timer.delay(1);
     }
 
     
@@ -65,18 +91,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
      * This function is called once each time the robot enters autonomous mode.
      */
     public void autonomous() {
-        m_magnitude = 0;
-        m_direction = 0;
-        m_rotation = 0;
             
         while (isAutonomous() && isEnabled()) {
-            m_mecanumDrive.isSafetyEnabled();
-            
-             m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
-             
-            
-            System.out.println("Switch says.... " + m_testSwitch.get());
-            Timer.delay(.01);
+           
+            m_mecanumDrive.drive(.5, .5);
+           
         }
     }
 
@@ -93,6 +112,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             double m_xb1_ax4;
             double m_xb1_ax5;
             double m_xb1_ax6;
+            
+            m_mecanumDrive.setSafetyEnabled(false);
+            
+            m_gyro.setSensitivity(0.2);
+            m_gyroDataCurrent = m_gyro.getAngle();
             
             //this is from the left joystick
             if (Math.abs(m_xBox1.getMagnitude()) > m_deadZone)
@@ -216,13 +240,26 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             {
                 System.out.println("Axis 6 = "+ m_xb1_ax6);
             }
-                Timer.delay(1);
+            
+            if (m_microSwitch.get() == false){
+                m_spikeRelay.set(Relay.Value.kOff);
+            }
+            else {
+                m_spikeRelay.setDirection(Relay.Direction.kForward);
+                m_spikeRelay.set(Relay.Value.kOn);
+            }
+            
+            
+            //temp slow the loop for display reasons.
+            Timer.delay(.01);
                 
 //             /* FPS controls for mecanum wheels */
 //            magnitude = leftStick.getMagnitude();
 //            direction = leftStick.getDirectionDegrees();
 //            rotation = rightStick.getX();
-            System.out.println("Switch says.... " + m_testSwitch.get());
+                
+//            System.out.println("MicroSwitch says.... " + m_microSwitch.get());
+//            System.out.println("Gyro Says....        " + m_gyroDataCurrent);
             
             m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
         
