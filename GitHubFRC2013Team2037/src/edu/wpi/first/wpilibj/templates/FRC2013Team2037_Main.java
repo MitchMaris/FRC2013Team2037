@@ -61,7 +61,6 @@ import edu.wpi.first.wpilibj.*;
  */
 public class FRC2013Team2037_Main extends SimpleRobot {
     
-    
     Joystick m_xBox1 = new Joystick(1);  //driver joystick, controller 1
     Joystick m_xBox2 = new Joystick(2);  //shooter joystick, controller 2
     RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3); 
@@ -105,7 +104,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     public void operatorControl() {
         while (isOperatorControl() && isEnabled()) {
             
-            double m_deadZone = 0.133;  //we need to play with this number to see what needs to be changed
+            double m_deadZone = 0.165;  //we need to play with this number to see what needs to be changed
             double m_xb1_ax1;
             double m_xb1_ax2;
             double m_xb1_ax3;
@@ -115,8 +114,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
             m_mecanumDrive.setSafetyEnabled(false);
             
-            m_gyro.setSensitivity(0.2);
+            m_gyro.setSensitivity(0.20);
             m_gyroDataCurrent = m_gyro.getAngle();
+            
             
             //this is from the left joystick
             if (Math.abs(m_xBox1.getMagnitude()) > m_deadZone)
@@ -141,13 +141,15 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             //this is from the right joystick
             if (Math.abs(m_xBox1.getX(GenericHID.Hand.kRight)) > m_deadZone)
             {
-                m_rotation = m_xBox1.getX(GenericHID.Hand.kRight);
+                m_rotation = m_xBox1.getRawAxis(4);
             }
             else
             {
                 m_rotation = 0;
             }
-           //debug code
+           
+            
+            //level all joystick inputs
             if (Math.abs(m_xBox1.getRawAxis(1)) > m_deadZone)
             {
                 m_xb1_ax1 = m_xBox1.getRawAxis(1);
@@ -215,31 +217,33 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             {
                 System.out.println("Rotation: " + m_rotation);
             }
-            //debug code
-            if (m_xb1_ax1 != 0)
-            {
-                System.out.println("Axis 1 = "+ m_xb1_ax1);
-            }
-            if (m_xb1_ax2 != 0)
-            {
-                System.out.println("Axis 2 = "+ m_xb1_ax2);
-            }
-            if (m_xb1_ax3 != 0)
-            {
-                System.out.println("Axis 3 = "+ m_xb1_ax3);
-            }
-            if (m_xb1_ax4 != 0)
-            {
-                System.out.println("Axis 4 = "+ m_xb1_ax4);
-            }
-            if (m_xb1_ax5 != 0)
-            {
-                System.out.println("Axis 5 = "+ m_xb1_ax5);
-            }
-            if (m_xb1_ax6 != 0)
-            {
-                System.out.println("Axis 6 = "+ m_xb1_ax6);
-            }
+            
+            
+//            //debug code
+//            if (m_xb1_ax1 != 0)
+//            {
+//                System.out.println("Axis 1 = "+ m_xb1_ax1);
+//            }
+//            if (m_xb1_ax2 != 0)
+//            {
+//                System.out.println("Axis 2 = "+ m_xb1_ax2);
+//            }
+//            if (m_xb1_ax3 != 0)
+//            {
+//                System.out.println("Axis 3 = "+ m_xb1_ax3);
+//            }
+//            if (m_xb1_ax4 != 0)
+//            {
+//                System.out.println("Axis 4 = "+ m_xb1_ax4);
+//            }
+//            if (m_xb1_ax5 != 0)
+//            {
+//                System.out.println("Axis 5 = "+ m_xb1_ax5);
+//            }
+//            if (m_xb1_ax6 != 0)
+//            {
+//                System.out.println("Axis 6 = "+ m_xb1_ax6);
+//            }
             
             if (m_microSwitch.get() == false){
                 m_spikeRelay.set(Relay.Value.kOff);
