@@ -30,8 +30,8 @@ package edu.wpi.first.wpilibj.templates;
 
     /* --Xbox Controller buttons
      * 
-     * &- means 0 to -1
-     * &+ means 0 to 1
+     *  #- means 0 to -1
+     *  #+ means 0 to 1
      * 
      * Left Stick = Axis 1,2 (1 is L- R+, 2 is U- D+)
      * Right Stick = Axis 4,5 (4 is L- R+, 5 is U- D+)
@@ -63,10 +63,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     Joystick m_xBox1 = new Joystick(1);  //driver joystick, controller 1
     Joystick m_xBox2 = new Joystick(2);  //shooter joystick, controller 2
+    //robot Drive init, motor input order is frontLeft, rearLeft, frontRight, rearRight
+    //robot Drive actual layout is frontLeft, frontRight, rearRight, rearLeft
     RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3); 
-    DigitalInput m_microSwitch = new DigitalInput(1);
+    DigitalInput m_microSwitch = new DigitalInput(1);  //microSwitch1
     Gyro m_gyro = new Gyro(1);
-    Relay m_spikeRelay = new Relay(1);
+    Relay m_spikeRelay = new Relay(1);  //spikeRelay to blink a light via microSwitch1
     
     
     //Global Variables
@@ -80,9 +82,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     
     public void robotInit() {
+        m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kFrontRight, true);
+        m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kRearRight, true);
         m_spikeRelay.set(Relay.Value.kOff);
         m_gyro.reset();
-        Timer.delay(1);
+        Timer.delay(.5);
     }
 
     
@@ -96,6 +100,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             m_mecanumDrive.drive(.5, .5);
            
         }
+        
+        stopRobot();
     }
 
     /**
@@ -112,8 +118,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             double m_xb1_ax5;
             double m_xb1_ax6;
             
-            m_mecanumDrive.setSafetyEnabled(false);
             
+            //m_mecanumDrive.setSafetyEnabled(false);
+                        
             m_gyro.setSensitivity(0.20);
             m_gyroDataCurrent = m_gyro.getAngle();
             
@@ -121,7 +128,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             //this is from the left joystick
             if (Math.abs(m_xBox1.getMagnitude()) > m_deadZone)
             {
-                m_magnitude = m_xBox1.getMagnitude();
+                m_magnitude = scaledInput(m_xBox1.getMagnitude());
             }
             else
             {
@@ -141,7 +148,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             //this is from the right joystick
             if (Math.abs(m_xBox1.getX(GenericHID.Hand.kRight)) > m_deadZone)
             {
-                m_rotation = m_xBox1.getRawAxis(4);
+                m_rotation = scaledInput(m_xBox1.getRawAxis(4));
             }
             else
             {
@@ -149,10 +156,10 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }
            
             
-            //level all joystick inputs
+            //level all joystick inputs, run through scaling code
             if (Math.abs(m_xBox1.getRawAxis(1)) > m_deadZone)
             {
-                m_xb1_ax1 = m_xBox1.getRawAxis(1);
+                m_xb1_ax1 = scaledInput(m_xBox1.getRawAxis(1));
             }
             else
             {
@@ -161,7 +168,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 
             if (Math.abs(m_xBox1.getRawAxis(2)) > m_deadZone)
             {
-                m_xb1_ax2 = m_xBox1.getRawAxis(2);
+                m_xb1_ax2 = scaledInput(m_xBox1.getRawAxis(2));
             }
             else
             {
@@ -170,7 +177,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 
             if (Math.abs(m_xBox1.getRawAxis(3)) > m_deadZone)
             {
-                m_xb1_ax3 = m_xBox1.getRawAxis(3);
+                m_xb1_ax3 = scaledInput(m_xBox1.getRawAxis(3));
             }
             else
             {
@@ -179,7 +186,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 
             if (Math.abs(m_xBox1.getRawAxis(4)) > m_deadZone)
             {
-                m_xb1_ax4 = m_xBox1.getRawAxis(4);
+                m_xb1_ax4 = scaledInput(m_xBox1.getRawAxis(4));
             }
             else
             {
@@ -188,7 +195,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 
             if (Math.abs(m_xBox1.getRawAxis(5)) > m_deadZone)
             {
-                m_xb1_ax5 = m_xBox1.getRawAxis(5);
+                m_xb1_ax5 = scaledInput(m_xBox1.getRawAxis(5));
             }
             else
             {
@@ -197,14 +204,14 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 
             if (Math.abs(m_xBox1.getRawAxis(6)) > m_deadZone)
             {
-                m_xb1_ax6 = m_xBox1.getRawAxis(6);
+                m_xb1_ax6 = scaledInput(m_xBox1.getRawAxis(6));
             }
             else
             {
                 m_xb1_ax6 = 0;
             }
 
-
+            //debug code
             if (m_magnitude != 0)
             {
                 System.out.println("Magnitude: " + m_magnitude);
@@ -216,10 +223,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             if (m_rotation != 0)
             {
                 System.out.println("Rotation: " + m_rotation);
-            }
-            
-            
-//            //debug code
+            }            
 //            if (m_xb1_ax1 != 0)
 //            {
 //                System.out.println("Axis 1 = "+ m_xb1_ax1);
@@ -244,7 +248,13 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 //            {
 //                System.out.println("Axis 6 = "+ m_xb1_ax6);
 //            }
+//            //Uncomment to see more debug lines
+//            System.out.println("MicroSwitch says.... " + m_microSwitch.get());
+//            System.out.println("SpikeRelay says....  " + m_spikeRelay.get());
+//            System.out.println("Gyro Says....        " + m_gyroDataCurrent);
             
+            
+            //microSwitch and spikeRelay testing code
             if (m_microSwitch.get() == false){
                 m_spikeRelay.set(Relay.Value.kOff);
             }
@@ -254,26 +264,57 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }
             
             
-            //temp slow the loop for display reasons.
-            Timer.delay(.01);
-                
-//             /* FPS controls for mecanum wheels */
-//            magnitude = leftStick.getMagnitude();
-//            direction = leftStick.getDirectionDegrees();
-//            rotation = rightStick.getX();
-                
-//            System.out.println("MicroSwitch says.... " + m_microSwitch.get());
-//            System.out.println("Gyro Says....        " + m_gyroDataCurrent);
-            
             m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
-        
+            
+            
+            //slow the loop for display reasons.
+            Timer.delay(.02);
         }
+        
+        stopRobot();
     
 }
+    
+    public double scaledInput(double joyValue) {
+        final double MAX_JOY_VAL = 1;    //the is the max value the joystick will output  
+        final double MAX_MOTOR_VAL = 1;    //this is the max the motor input will take
+
+        //calculate for scaled value  
+        double direction = joyValue / Math.abs(joyValue);     // 1 or -1 to determin forwards or backwards  
+        double ratio = ((joyValue * joyValue) / (MAX_JOY_VAL * MAX_JOY_VAL));    //log math  
+        double scaledVal = (ratio * MAX_MOTOR_VAL) * direction;    //scaled output math
+
+        return scaledVal;
+    }
+    
+    
+    //used to stop all moving robot parts and lights.
+    public void stopRobot() {
+        m_mecanumDrive.stopMotor();
+        m_spikeRelay.set(Relay.Value.kOff);
+      
+    }
+    
+    
+    
+    
+    //FRC Default test()
     public void test() {
     
     }
+    
 }
+
+
+
+
+
+
+
+
+
+
+
 //                      Our BASE FTC Robot movement code. For reference. will remove once we test the Mecanum setup.
 //
 //
