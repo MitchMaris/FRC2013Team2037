@@ -79,6 +79,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //double m_temperature; for temp
     double m_gyroDataStart;
     double m_gyroDataCurrent;
+    double m_gyroSensitivity = 0.20;
     
     
     public void robotInit() {
@@ -108,27 +109,40 @@ public class FRC2013Team2037_Main extends SimpleRobot {
      * This function is called once each time the robot enters operator control.
      */
     public void operatorControl() {
+        
+        double m_xb1DeadZone = 0.165;  //we need to play with this number to see what needs to be changed
+        double m_xb1_ax1;
+        double m_xb1_ax2;
+        double m_xb1_ax3;
+        double m_xb1_ax4;
+        double m_xb1_ax5;
+        double m_xb1_ax6;
+        double m_slowMotorSpeed;
+
+        
+        
         while (isOperatorControl() && isEnabled()) {
             
-            double m_deadZone = 0.165;  //we need to play with this number to see what needs to be changed
-            double m_xb1_ax1;
-            double m_xb1_ax2;
-            double m_xb1_ax3;
-            double m_xb1_ax4;
-            double m_xb1_ax5;
-            double m_xb1_ax6;
+            
+            m_slowMotorSpeed = .5;
+            m_gyro.setSensitivity(m_gyroSensitivity);  //use to slow the number down. 360 rotation equals (fill in with correct number)
+        
             
             
             //m_mecanumDrive.setSafetyEnabled(false);
                         
-            m_gyro.setSensitivity(0.20);
+            //reads the current gyro data
             m_gyroDataCurrent = m_gyro.getAngle();
             
-            
+            if(m_xBox1.getBumper(GenericHID.Hand.kRight) == true) {
+                m_slowMotorSpeed = 1;
+            }
+               
             //this is from the left joystick
-            if (Math.abs(m_xBox1.getMagnitude()) > m_deadZone)
+            if (Math.abs(m_xBox1.getMagnitude()) > m_xb1DeadZone)
             {
                 m_magnitude = scaledInput(m_xBox1.getMagnitude());
+                m_magnitude = m_magnitude * m_slowMotorSpeed;  //add if we need to slow her down.
             }
             else
             {
@@ -144,11 +158,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             {
                 m_direction = 0;
             }
-            
+
             //this is from the right joystick
-            if (Math.abs(m_xBox1.getX(GenericHID.Hand.kRight)) > m_deadZone)
+            if (Math.abs(m_xBox1.getX(GenericHID.Hand.kRight)) > m_xb1DeadZone)
             {
                 m_rotation = scaledInput(m_xBox1.getRawAxis(4));
+                //m_rotation = m_rotation * m_slowDownRate;  //add if we need to slow her down.
             }
             else
             {
@@ -156,8 +171,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }
            
             
+            
             //level all joystick inputs, run through scaling code
-            if (Math.abs(m_xBox1.getRawAxis(1)) > m_deadZone)
+            if (Math.abs(m_xBox1.getRawAxis(1)) > m_xb1DeadZone)
             {
                 m_xb1_ax1 = scaledInput(m_xBox1.getRawAxis(1));
             }
@@ -166,7 +182,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_xb1_ax1 = 0;
             }
 
-            if (Math.abs(m_xBox1.getRawAxis(2)) > m_deadZone)
+            if (Math.abs(m_xBox1.getRawAxis(2)) > m_xb1DeadZone)
             {
                 m_xb1_ax2 = scaledInput(m_xBox1.getRawAxis(2));
             }
@@ -175,7 +191,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_xb1_ax2 = 0;
             }
 
-            if (Math.abs(m_xBox1.getRawAxis(3)) > m_deadZone)
+            if (Math.abs(m_xBox1.getRawAxis(3)) > m_xb1DeadZone)
             {
                 m_xb1_ax3 = scaledInput(m_xBox1.getRawAxis(3));
             }
@@ -184,7 +200,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_xb1_ax3 = 0;
             }
 
-            if (Math.abs(m_xBox1.getRawAxis(4)) > m_deadZone)
+            if (Math.abs(m_xBox1.getRawAxis(4)) > m_xb1DeadZone)
             {
                 m_xb1_ax4 = scaledInput(m_xBox1.getRawAxis(4));
             }
@@ -193,7 +209,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_xb1_ax4 = 0;
             }
 
-            if (Math.abs(m_xBox1.getRawAxis(5)) > m_deadZone)
+            if (Math.abs(m_xBox1.getRawAxis(5)) > m_xb1DeadZone)
             {
                 m_xb1_ax5 = scaledInput(m_xBox1.getRawAxis(5));
             }
@@ -202,7 +218,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_xb1_ax5 = 0;
             }
 
-            if (Math.abs(m_xBox1.getRawAxis(6)) > m_deadZone)
+            if (Math.abs(m_xBox1.getRawAxis(6)) > m_xb1DeadZone)
             {
                 m_xb1_ax6 = scaledInput(m_xBox1.getRawAxis(6));
             }
@@ -273,7 +289,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         
         stopRobot();
     
-}
+    }
     
     public double scaledInput(double joyValue) {
         final double MAX_JOY_VAL = 1;    //the is the max value the joystick will output  
