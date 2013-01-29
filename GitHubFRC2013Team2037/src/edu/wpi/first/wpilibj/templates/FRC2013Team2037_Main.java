@@ -68,7 +68,6 @@ import edu.wpi.first.wpilibj.image.LinearAverages;
 import edu.wpi.first.wpilibj.image.NIVision;
 import edu.wpi.first.wpilibj.image.NIVisionException;
 import edu.wpi.first.wpilibj.image.ParticleAnalysisReport;
-import edu.wpi.first.wpilibj.command.Command;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -99,6 +98,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     double m_gyroDataStart;
     double m_gyroDataCurrent;
     double m_gyroSensitivity = 0.20;
+    double m_visionLoopDelay = 0.25;
         
     //vision code.
     final int XMAXSIZE = 24;
@@ -137,6 +137,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         m_spikeRelay.set(Relay.Value.kOff);
         m_gyro.reset();
         Timer.delay(.5);
+        
+        Thread visionProcessing = new Thread(mainVisionProcessing); //vision processing thread, test area
+	visionProcessing.start();
     }
 
     
@@ -149,10 +152,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         while (isAutonomous() && isEnabled()) {
            
             m_mecanumDrive.drive(.5, 0);
-           
+            
+           //slow the loop for display reasons.
+            Timer.delay(.02);
         }
         
-        stopRobot();
+        stopRobot();  //Kill the motors on the robot
     }
 
     //This function is called once each time the robot enters operator control.
@@ -179,8 +184,13 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             //reads the current gyro data
             m_gyroDataCurrent = m_gyro.getAngle();
             
+            //kill button code
+            if (m_xBox1.getRawButton(8)) {
+                stopRobot();
+            }
+            
             //turbo button, may delete if not needed
-            if(m_xBox1.getBumper(GenericHID.Hand.kRight) == true) {
+            if(m_xBox1.getBumper(GenericHID.Hand.kRight)) {
                 m_slowMotorSpeed = 1;
             }
                
@@ -337,7 +347,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             Timer.delay(.02);
         }
         
-        stopRobot();
+        stopRobot();  //Kill the motors on the robot
     
     }
     
@@ -367,13 +377,14 @@ public class FRC2013Team2037_Main extends SimpleRobot {
       
     }
     
-  
+    Runnable mainVisionProcessing = new Runnable()
+    {
 
-    
-    public void mainVisionProcessing() {
-        
-    
-        try {
+	
+	public void run()
+        {
+	    
+             try {
                 /**
                  * Do the image capture with the camera and apply the algorithm described above. This
                  * sample will either get images from the camera or from an image file stored in the top
@@ -421,7 +432,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                         
                     } else {
                         
-                        
+                        System.out.println("particle: " + i + "is not a goal");
 //                        System.out.println("particle: " + i + "is not a goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
 //                        System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
 //			  System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
@@ -445,7 +456,14 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             } catch (NIVisionException ex) {
                 ex.printStackTrace();
             }
-    }
+             
+              Timer.delay(m_visionLoopDelay);
+        }
+
+    };
+    
+
+        
     
     double computeDistance (BinaryImage image, ParticleAnalysisReport report, int particleNumber, boolean outer) throws NIVisionException {
             double rectShort, height;
@@ -460,17 +478,16 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             return X_IMAGE_RES * targetHeight / (height * 12 * 2 * Math.tan(VIEW_ANGLE*Math.PI/(180*2)));
     }
     
-    /**
-     * Computes a score (0-100) comparing the aspect ratio to the ideal aspect ratio for the target. This method uses
-     * the equivalent rectangle sides to determine aspect ratio as it performs better as the target gets skewed by moving
-     * to the left or right. The equivalent rectangle is the rectangle with sides x and y where particle area= x*y
-     * and particle perimeter= 2x+2y
-     * 
-     * @param image The image containing the particle to score, needed to performa additional measurements
-     * @param report The Particle Analysis Report for the particle, used for the width, height, and particle number
-     * @param outer	Indicates whether the particle aspect ratio should be compared to the ratio for the inner target or the outer
-     * @return The aspect ratio score (0-100)
-     */
+    // Computes a score (0-100) comparing the aspect ratio to the ideal aspect ratio for the target. This method uses
+    // the equivalent rectangle sides to determine aspect ratio as it performs better as the target gets skewed by moving
+    // to the left or right. The equivalent rectangle is the rectangle with sides x and y where particle area= x*y
+    // and particle perimeter= 2x+2y
+    // 
+    // @param image The image containing the particle to score, needed to performa additional measurements
+    // @param report The Particle Analysis Report for the particle, used for the width, height, and particle number
+    // @param outer	Indicates whether the particle aspect ratio should be compared to the ratio for the inner target or the outer
+    // @return The aspect ratio score (0-100)
+     
     public double scoreAspectRatio(BinaryImage image, ParticleAnalysisReport report, int particleNumber, boolean outer) throws NIVisionException
     {
         double rectLong, rectShort, aspectRatio, idealAspectRatio;
@@ -490,14 +507,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 	return (Math.max(0, Math.min(aspectRatio, 100.0)));		//force to be in range 0-100
     }
     
-    /**
-     * Compares scores to defined limits and returns true if the particle appears to be a target
-     * 
-     * @param scores The structure containing the scores to compare
-     * @param outer True if the particle should be treated as an outer target, false to treat it as a center target
-     * 
-     * @return True if the particle meets all limits, false otherwise
-     */
+    // Compares scores to defined limits and returns true if the particle appears to be a target
+    // 
+    //@param scores The structure containing the scores to compare
+    //@param outer True if the particle should be treated as an outer target, false to treat it as a center target
+    // 
+    //@return True if the particle meets all limits, false otherwise
     boolean scoreCompare(FRC2013Team2037_Main.Scores scores, boolean outer){
             boolean isTarget = true;
 
@@ -513,13 +528,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             return isTarget;
     }
     
-    /**
-     * Computes a score (0-100) estimating how rectangular the particle is by comparing the area of the particle
-     * to the area of the bounding box surrounding it. A perfect rectangle would cover the entire bounding box.
-     * 
-     * @param report The Particle Analysis Report for the particle to score
-     * @return The rectangularity score (0-100)
-     */
+    //Computes a score (0-100) estimating how rectangular the particle is by comparing the area of the particle
+    //to the area of the bounding box surrounding it. A perfect rectangle would cover the entire bounding box.
+    // 
+    //@param report The Particle Analysis Report for the particle to score
+    //@return The rectangularity score (0-100)
     double scoreRectangularity(ParticleAnalysisReport report){
             if(report.boundingRectWidth*report.boundingRectHeight !=0){
                     return 100*report.particleArea/(report.boundingRectWidth*report.boundingRectHeight);
@@ -528,16 +541,14 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }	
     }
     
-    /**
-     * Computes a score based on the match between a template profile and the particle profile in the X direction. This method uses the
-     * the column averages and the profile defined at the top of the sample to look for the solid vertical edges with
-     * a hollow center.
-     * 
-     * @param image The image to use, should be the image before the convex hull is performed
-     * @param report The Particle Analysis Report for the particle
-     * 
-     * @return The X Edge Score (0-100)
-     */
+    //Computes a score based on the match between a template profile and the particle profile in the X direction. This method uses the
+    ///the column averages and the profile defined at the top of the sample to look for the solid vertical edges with
+    //a hollow center.
+    //
+    //@param image The image to use, should be the image before the convex hull is performed
+    //@param report The Particle Analysis Report for the particle
+    // 
+    //@return The X Edge Score (0-100)
     public double scoreXEdge(BinaryImage image, ParticleAnalysisReport report) throws NIVisionException
     {
         double total = 0;
@@ -556,17 +567,14 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         return total;
     }
     
-    /**
-	 * Computes a score based on the match between a template profile and the particle profile in the Y direction. This method uses the
-	 * the row averages and the profile defined at the top of the sample to look for the solid horizontal edges with
-	 * a hollow center
-	 * 
-	 * @param image The image to use, should be the image before the convex hull is performed
-	 * @param report The Particle Analysis Report for the particle
-	 * 
-	 * @return The Y Edge score (0-100)
-	 *
-    */
+    //Computes a score based on the match between a template profile and the particle profile in the Y direction. This method uses the
+    //the row averages and the profile defined at the top of the sample to look for the solid horizontal edges with
+    //a hollow center
+    //
+    //@param image The image to use, should be the image before the convex hull is performed
+    //@param report The Particle Analysis Report for the particle
+    //
+    //@return The Y Edge score (0-100)
     public double scoreYEdge(BinaryImage image, ParticleAnalysisReport report) throws NIVisionException
     {
         double total = 0;
