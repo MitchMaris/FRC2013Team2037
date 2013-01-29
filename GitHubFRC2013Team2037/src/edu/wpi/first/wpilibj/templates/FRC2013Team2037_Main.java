@@ -68,6 +68,7 @@ import edu.wpi.first.wpilibj.image.LinearAverages;
 import edu.wpi.first.wpilibj.image.NIVision;
 import edu.wpi.first.wpilibj.image.NIVisionException;
 import edu.wpi.first.wpilibj.image.ParticleAnalysisReport;
+import edu.wpi.first.wpilibj.command.Command;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -86,8 +87,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     DigitalInput m_microSwitch = new DigitalInput(1);  //microSwitch1
     Gyro m_gyro = new Gyro(1);
     Relay m_spikeRelay = new Relay(1);  //spikeRelay to blink a light via microSwitch1
-    
-    
+    AxisCamera camera;          // the axis camera object (connected to the switch)
+    CriteriaCollection cc;      // the criteria for doing the particle filter operation
+
     //Global Variables
     double m_magnitude;
     double m_direction;
@@ -97,9 +99,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     double m_gyroDataStart;
     double m_gyroDataCurrent;
     double m_gyroSensitivity = 0.20;
-    
-    
-    
+        
     //vision code.
     final int XMAXSIZE = 24;
     final int XMINSIZE = 24;
@@ -120,8 +120,6 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     final int X_IMAGE_RES = 320;          //X Image resolution in pixels, should be 160, 320 or 640
     final double VIEW_ANGLE = 43.5;       //Axis 206 camera
     
-    AxisCamera camera;          // the axis camera object (connected to the switch)
-    CriteriaCollection cc;      // the criteria for doing the particle filter operation
     
     // SCORE!!! for vision
     public class Scores {
@@ -145,10 +143,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     //This function is called once each time the robot enters autonomous mode.
     public void autonomous() {
-            
+        
+        m_mecanumDrive.setSafetyEnabled(false);
+        
         while (isAutonomous() && isEnabled()) {
            
-            m_mecanumDrive.drive(.5, .5);
+            m_mecanumDrive.drive(.5, 0);
            
         }
         
@@ -158,6 +158,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //This function is called once each time the robot enters operator control.
     public void operatorControl() {
         
+        //local Teleop variables
         double m_xb1DeadZone = 0.165;  //we need to play with this number to see what needs to be changed
         double m_xb1_ax1;
         double m_xb1_ax2;
@@ -167,27 +168,24 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         double m_xb1_ax6;
         double m_slowMotorSpeed;
 
-        
+        m_mecanumDrive.setSafetyEnabled(true);
         
         while (isOperatorControl() && isEnabled()) {
             
             
             m_slowMotorSpeed = .5;
             m_gyro.setSensitivity(m_gyroSensitivity);  //use to slow the number down. 360 rotation equals (fill in with correct number)
-        
-            
-            
-            //m_mecanumDrive.setSafetyEnabled(false);
-            
                         
             //reads the current gyro data
             m_gyroDataCurrent = m_gyro.getAngle();
             
+            //turbo button, may delete if not needed
             if(m_xBox1.getBumper(GenericHID.Hand.kRight) == true) {
                 m_slowMotorSpeed = 1;
             }
                
             //this is from the left joystick
+            //takes the greatest number from any direction and sets it to the current speed
             if (Math.abs(m_xBox1.getMagnitude()) > m_xb1DeadZone)
             {
                 m_magnitude = scaledInput(m_xBox1.getMagnitude());
@@ -199,6 +197,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }
             //this is from the left joystick
             //leave in if we need to shape the number any
+            //top is 0, bottom is 180, then goes from -179 back around to -1
             if (Math.abs(m_xBox1.getDirectionDegrees()) > 0) //m_deadZone)
             {
                 m_direction = m_xBox1.getDirectionDegrees();
@@ -209,6 +208,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }
 
             //this is from the right joystick
+            //right and left, to make the robot spin
             if (Math.abs(m_xBox1.getX(GenericHID.Hand.kRight)) > m_xb1DeadZone)
             {
                 m_rotation = scaledInput(m_xBox1.getRawAxis(4));
@@ -313,6 +313,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 //            {
 //                System.out.println("Axis 6 = "+ m_xb1_ax6);
 //            }
+            
 //            //Uncomment to see more debug lines
 //            System.out.println("MicroSwitch says.... " + m_microSwitch.get());
 //            System.out.println("SpikeRelay says....  " + m_spikeRelay.get());
