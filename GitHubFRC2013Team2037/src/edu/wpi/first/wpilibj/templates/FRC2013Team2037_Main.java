@@ -82,15 +82,18 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     Joystick m_xBox2 = new Joystick(2);  //shooter joystick, controller 2
     //robot Drive init, motor input order is frontLeft, rearLeft, frontRight, rearRight
     //robot Drive actual layout is frontLeft, frontRight, rearRight, rearLeft
-    RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3); 
+    RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3);
+    RobotDrive m_shooterDrive = new RobotDrive(5,6); //Konnor //Drive wheels for shooter 
     DigitalInput m_microSwitch = new DigitalInput(1);  //microSwitch1
     Gyro m_gyro = new Gyro(1);
     Relay m_spikeRelay = new Relay(1);  //spikeRelay to blink a light via microSwitch1
+    Relay m_spikeRelay2 = new Relay(2); //Konnor //Spike relay for controling angle motors
     AxisCamera camera;          // the axis camera object (connected to the switch)
     CriteriaCollection cc;      // the criteria for doing the particle filter operation
 
     //Global Variables
     double m_magnitude;
+    double m_magnitude2; //Konnor
     double m_direction;
     double m_rotation;             
     //double m_change;      for temp    
@@ -154,16 +157,94 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     //This function is called once each time the robot enters autonomous mode.
     public void autonomous() {
-        
+         //AxisCamera camera; 
         m_mecanumDrive.setSafetyEnabled(false);
+        System.out.println("We are running!");
         
         while (isAutonomous() && isEnabled()) {
            
-            m_mecanumDrive.drive(.5, 0);
+//            m_mecanumDrive.drive(.5, 0);
+//            
+//           //slow the loop for display reasons.
+//            Timer.delay(.02);
             
-           //slow the loop for display reasons.
-            Timer.delay(.02);
-        }
+            
+            try {
+                   /**
+                    * Do the image capture with the camera and apply the algorithm described above. This
+                    * sample will either get images from the camera or from an image file stored in the top
+                    * level directory in the flash memory on the cRIO. The file name in this case is "testImage.jpg"
+                    * 
+                    */
+                   ColorImage image = camera.getImage();     // comment if using stored images
+                   //ColorImage image;                           // next 2 lines read image from flash on cRIO
+                   //image = new RGBImage("/testImage.jpg");		// get the sample image from the cRIO flash
+                   BinaryImage thresholdImage = image.thresholdHSV(60, 100, 90, 255, 20, 255);   // keep only red objects
+                   //thresholdImage.write("/threshold.bmp");
+                   BinaryImage convexHullImage = thresholdImage.convexHull(false);          // fill in occluded rectangles
+                   //convexHullImage.write("/convexHull.bmp");
+                   BinaryImage filteredImage = convexHullImage.particleFilter(cc);           // filter out small particles
+                   //filteredImage.write("/filteredImage.bmp");
+
+
+                   //iterate through each particle and score to see if it is a target
+                  FRC2013Team2037_Main.Scores scores[] = new FRC2013Team2037_Main.Scores[filteredImage.getNumberParticles()];
+                   for (int i = 0; i < scores.length; i++) {
+                       ParticleAnalysisReport report = filteredImage.getParticleAnalysisReport(i);
+                       scores[i] = new Scores();
+
+                       scores[i].rectangularity = scoreRectangularity(report);
+                       scores[i].aspectRatioOuter = scoreAspectRatio(filteredImage,report, i, true);
+                       scores[i].aspectRatioInner = scoreAspectRatio(filteredImage, report, i, false);
+                       scores[i].xEdge = scoreXEdge(thresholdImage, report);
+                       scores[i].yEdge = scoreYEdge(thresholdImage, report);
+
+                       if(scoreCompare(scores[i], false))
+                       {
+
+                           System.out.println("particle: " + i + "is a High Goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
+                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, false));
+                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
+                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
+
+                       } else if (scoreCompare(scores[i], true)) {
+
+
+                           System.out.println("particle: " + i + "is a Middle Goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
+                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, true));
+                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
+                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
+
+                       } else {
+
+                           System.out.println("particle: " + i + "is not a goal");
+                           System.out.println("particle: " + i + "is not a goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
+                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
+   			  System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
+
+                       }
+
+                   }
+
+                   /**
+                    * all images in Java must be freed after they are used since they are allocated out
+                    * of C data structures. Not calling free() will cause the memory to accumulate over
+                    * each pass of this loop.
+                    */
+                   filteredImage.free();
+                   convexHullImage.free();
+                   thresholdImage.free();
+                   image.free();
+
+               } catch (AxisCameraException ex) {        // this is needed if the camera.getImage() is called
+                   ex.printStackTrace();
+               } catch (NIVisionException ex) {
+                   ex.printStackTrace();
+               }
+
+                 Timer.delay(.25);
+           }
+        
         
         stopRobot();  //Kill the motors on the robot
     }
@@ -352,8 +433,33 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_spikeRelay.set(Relay.Value.kOn);
             }
             
+            // Konnor added this
+            if (m_xBox1.getRawAxis(6) == 0) { //I want the input from the D pad for all of these .getRawAxis
+                // If Dpad is up, drives the motors one direction
+                m_spikeRelay2.set(Relay.Value.kForward);
+                m_spikeRelay2.set(Relay.Value.kOn);
+            }
+            else if (m_xBox1.getRawAxis(6) == 4) {
+                // If Dpad is down, drives the motors the other direction
+                m_spikeRelay2.set(Relay.Value.kReverse);
+                m_spikeRelay2.set(Relay.Value.kOn);
+            }
+            else {
+                //Turns off motors
+                m_spikeRelay2.set(Relay.Value.kOff);
+            }
+            if ((m_xBox1.getRawAxis(6) == 2) && m_magnitude2 < 100) { //Will increase speed of motors when right DPad is held
+                m_magnitude2 = m_magnitude2 + 5;
+            }
+            else if ((m_xBox1.getRawAxis(6) == 6) && m_magnitude > 0){//Will deacrease speed of motors when left DPad is held
+                m_magnitude2 = m_magnitude2 - 5;
+            }
             
+            m_shooterDrive.drive(m_magnitude2, m_xb1_ax6); //I dont know what to put for curve
+            // End konnor's work
             m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
+            
+            
             
             
             //slow the loop for display reasons.
