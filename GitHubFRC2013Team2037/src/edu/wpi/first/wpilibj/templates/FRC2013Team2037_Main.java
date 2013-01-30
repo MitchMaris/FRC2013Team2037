@@ -17,7 +17,8 @@ package edu.wpi.first.wpilibj.templates;
      * 4. Rear Left
      * 
      * -- Spike
-     * 1. m_spikeRelay
+     * 1. m_spikeRelay1
+     * 2. m_spikeRelay2  shooter angle
      * 
      * -- Digital
      * 1. m_microSwitch
@@ -54,11 +55,15 @@ package edu.wpi.first.wpilibj.templates;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Gyro;
+import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.SimpleRobot;
+import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Victor;
 import edu.wpi.first.wpilibj.camera.AxisCamera;
 import edu.wpi.first.wpilibj.camera.AxisCameraException;
 import edu.wpi.first.wpilibj.image.BinaryImage;
@@ -83,19 +88,24 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //robot Drive init, motor input order is frontLeft, rearLeft, frontRight, rearRight
     //robot Drive actual layout is frontLeft, frontRight, rearRight, rearLeft
     RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3);
-    RobotDrive m_shooterDrive = new RobotDrive(5,6); //Konnor //Drive wheels for shooter 
+    SpeedController m_shooterFront = new Victor(5); //Konnor //Drive wheels for shooter 
+    SpeedController m_shooterBack = new Jaguar(6);
     DigitalInput m_microSwitch = new DigitalInput(1);  //microSwitch1
     Gyro m_gyro = new Gyro(1);
     Relay m_spikeRelay = new Relay(1);  //spikeRelay to blink a light via microSwitch1
-    Relay m_spikeRelay2 = new Relay(2); //Konnor //Spike relay for controling angle motors
+    Relay m_spikeShooterAngle = new Relay(2); //Konnor //Spike relay for controling angle motors
+    Relay m_spikeBatteryMotor = new Relay(3);
     AxisCamera camera;          // the axis camera object (connected to the switch)
     CriteriaCollection cc;      // the criteria for doing the particle filter operation
+    Servo m_servoLC = new Servo(9);
+    Servo m_servoRC = new Servo(10);
 
     //Global Variables
     double m_magnitude;
-    double m_magnitude2; //Konnor
     double m_direction;
-    double m_rotation;             
+    double m_rotation;
+    double m_shooterFrontSpeed;
+    double m_shooterBackSpeed;
     //double m_change;      for temp    
     //double m_temperature; for temp
     double m_gyroDataStart;
@@ -136,6 +146,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //This function is called once when the robot is powered on.
     public void robotInit() {
         m_spikeRelay.set(Relay.Value.kOff);
+        m_spikeShooterAngle.set(Relay.Value.kOff);
+        m_servoLC.set(0);
+        m_servoRC.set(0);
         try {
             m_gyro.reset();
             Timer.delay(.5);
@@ -429,33 +442,64 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_spikeRelay.set(Relay.Value.kOff);
             }
             else {
-                m_spikeRelay.setDirection(Relay.Direction.kForward);
-                m_spikeRelay.set(Relay.Value.kOn);
+                m_spikeRelay.set(Relay.Value.kForward);
             }
             
             // Konnor added this
-            if (m_xBox1.getRawAxis(6) == 0) { //I want the input from the D pad for all of these .getRawAxis
+            if (m_xBox1.getRawAxis(6) == 1) { //I want the input from the D pad for all of these .getRawAxis
                 // If Dpad is up, drives the motors one direction
-                m_spikeRelay2.set(Relay.Value.kForward);
-                m_spikeRelay2.set(Relay.Value.kOn);
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeShooterAngle.set(Relay.Value.kForward);
+               
             }
-            else if (m_xBox1.getRawAxis(6) == 4) {
+            else if (m_xBox1.getRawAxis(6) == -1) {
                 // If Dpad is down, drives the motors the other direction
-                m_spikeRelay2.set(Relay.Value.kReverse);
-                m_spikeRelay2.set(Relay.Value.kOn);
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeShooterAngle.set(Relay.Value.kReverse);
+          }
+            else if (m_xBox1.getRawAxis(6) == 0){
+                //Turns off motors
+                m_spikeShooterAngle.set(Relay.Value.kOff);
+            }
+            
+            
+            if (m_xBox1.getRawButton(4)) { //Will increase speed of motors when right DPad is held
+                m_shooterFrontSpeed = 0;
+                m_shooterBackSpeed = 0;
+            }
+            else if (m_xBox1.getRawButton(1)) {
+                m_shooterFrontSpeed = 1;
+                m_shooterBackSpeed = 1;
+            }
+            if (m_xBox1.getRawButton(2)) {
+                m_servoLC.set(1);
+                m_servoRC.set(1);
+            }
+            else if (m_xBox1.getRawButton(3)) {
+                m_servoLC.set(0);
+                m_servoRC.set(0);
+            }
+            if (m_xBox1.getRawButton(5)) { //I want the input from the D pad for all of these .getRawAxis
+                // If Dpad is up, drives the motors one direction
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeBatteryMotor.set(Relay.Value.kForward);
+               
+            }
+            else if (m_xBox1.getRawButton(6)) {
+                // If Dpad is down, drives the motors the other direction
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeBatteryMotor.set(Relay.Value.kReverse);
             }
             else {
                 //Turns off motors
-                m_spikeRelay2.set(Relay.Value.kOff);
+                m_spikeBatteryMotor.set(Relay.Value.kOff);
             }
-            if ((m_xBox1.getRawAxis(6) == 2) && m_magnitude2 < 100) { //Will increase speed of motors when right DPad is held
-                m_magnitude2 = m_magnitude2 + 5;
-            }
-            else if ((m_xBox1.getRawAxis(6) == 6) && m_magnitude > 0){//Will deacrease speed of motors when left DPad is held
-                m_magnitude2 = m_magnitude2 - 5;
-            }
+            System.out.println("Left Bump " + m_xBox1.getRawButton(5) + " Right Bump " + m_xBox1.getRawButton(6));
+            //System.out.println("ServoLC position " + m_servoLC.getPosition() + " ServoRC position " + m_servoRC.getPosition());
+            // System.out.println("Shooter Front " + m_shooterFrontSpeed + " Shooter Back " + m_shooterBackSpeed);
+            m_shooterFront.set(m_shooterFrontSpeed);
+            m_shooterBack.set(m_shooterBackSpeed);
             
-            m_shooterDrive.drive(m_magnitude2, m_xb1_ax6); //I dont know what to put for curve
             // End konnor's work
             m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
             
