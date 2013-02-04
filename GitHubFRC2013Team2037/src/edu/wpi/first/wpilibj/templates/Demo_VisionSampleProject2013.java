@@ -4,6 +4,7 @@ package edu.wpi.first.wpilibj.templates;
 import edu.wpi.first.wpilibj.SimpleRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.camera.AxisCamera;
+import edu.wpi.first.wpilibj.camera.AxisCameraException;
 import edu.wpi.first.wpilibj.image.*;
 import edu.wpi.first.wpilibj.image.NIVision.MeasurementType;
 import edu.wpi.first.wpilibj.image.NIVision.Rect;
@@ -64,7 +65,7 @@ public class Demo_VisionSampleProject2013 extends SimpleRobot {
     }
     
     public void robotInit() {
-        //camera = AxisCamera.getInstance();  // get an instance of the camera
+        camera = AxisCamera.getInstance();  // get an instance of the camera
         cc = new CriteriaCollection();      // create the criteria for the particle filter
         cc.addCriteria(MeasurementType.IMAQ_MT_AREA, 500, 65535, false);
     }
@@ -78,9 +79,9 @@ public class Demo_VisionSampleProject2013 extends SimpleRobot {
                  * level directory in the flash memory on the cRIO. The file name in this case is "testImage.jpg"
                  * 
                  */
-                //ColorImage image = camera.getImage();     // comment if using stored images
-                ColorImage image;                           // next 2 lines read image from flash on cRIO
-                image = new RGBImage("/testImage.jpg");		// get the sample image from the cRIO flash
+                ColorImage image = camera.getImage();     // comment if using stored images
+//                ColorImage image;                           // next 2 lines read image from flash on cRIO
+//                image = new RGBImage("/testImage.jpg");		// get the sample image from the cRIO flash
                 BinaryImage thresholdImage = image.thresholdHSV(60, 100, 90, 255, 20, 255);   // keep only red objects
                 //thresholdImage.write("/threshold.bmp");
                 BinaryImage convexHullImage = thresholdImage.convexHull(false);          // fill in occluded rectangles
@@ -124,8 +125,8 @@ public class Demo_VisionSampleProject2013 extends SimpleRobot {
                 thresholdImage.free();
                 image.free();
                 
-//            } catch (AxisCameraException ex) {        // this is needed if the camera.getImage() is called
-//                ex.printStackTrace();
+            } catch (AxisCameraException ex) {        // this is needed if the camera.getImage() is called
+                ex.printStackTrace();
             } catch (NIVisionException ex) {
                 ex.printStackTrace();
             }
