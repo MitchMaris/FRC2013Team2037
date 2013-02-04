@@ -18,7 +18,8 @@ package edu.wpi.first.wpilibj.templates;
      * 4. Rear Left
      * 
      * -- Spike
-     * 1. m_spikeRelay
+     * 1. m_spikeRelay1
+     * 2. m_spikeRelay2  shooter angle
      * 
      * -- Digital
      * 1. m_microSwitch
@@ -55,11 +56,15 @@ package edu.wpi.first.wpilibj.templates;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Gyro;
+import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.SimpleRobot;
+import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Victor;
 import edu.wpi.first.wpilibj.camera.AxisCamera;
 import edu.wpi.first.wpilibj.camera.AxisCameraException;
 import edu.wpi.first.wpilibj.image.BinaryImage;
@@ -83,17 +88,25 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     Joystick m_xBox2 = new Joystick(2);  //shooter joystick, controller 2
     //robot Drive init, motor input order is frontLeft, rearLeft, frontRight, rearRight
     //robot Drive actual layout is frontLeft, frontRight, rearRight, rearLeft
-    RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3); 
+    RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3);
+    SpeedController m_shooterFront = new Victor(5); //Konnor //Drive wheels for shooter 
+    SpeedController m_shooterBack = new Jaguar(6);
     DigitalInput m_microSwitch = new DigitalInput(1);  //microSwitch1
     Gyro m_gyro = new Gyro(1);
     Relay m_spikeRelay = new Relay(1);  //spikeRelay to blink a light via microSwitch1
+    Relay m_spikeShooterAngle = new Relay(2); //Konnor //Spike relay for controling angle motors
+    Relay m_spikeBatteryMotor = new Relay(3);
     AxisCamera camera;          // the axis camera object (connected to the switch)
     CriteriaCollection cc;      // the criteria for doing the particle filter operation
+    Servo m_servoLC = new Servo(9);
+    Servo m_servoRC = new Servo(10);
 
     //Global Variables
     double m_magnitude;
     double m_direction;
-    double m_rotation;             
+    double m_rotation;
+    double m_shooterFrontSpeed;
+    double m_shooterBackSpeed;
     //double m_change;      for temp    
     //double m_temperature; for temp
     double m_gyroDataStart;
@@ -134,6 +147,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //This function is called once when the robot is powered on.
     public void robotInit() {
         m_spikeRelay.set(Relay.Value.kOff);
+        m_spikeShooterAngle.set(Relay.Value.kOff);
+        m_servoLC.set(0);
+        m_servoRC.set(0);
         try {
             m_gyro.reset();
             Timer.delay(.5);
@@ -155,16 +171,94 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     //This function is called once each time the robot enters autonomous mode.
     public void autonomous() {
-        
+         //AxisCamera camera; 
         m_mecanumDrive.setSafetyEnabled(false);
+        System.out.println("We are running!");
         
         while (isAutonomous() && isEnabled()) {
            
-            m_mecanumDrive.drive(.5, 0);
+//            m_mecanumDrive.drive(.5, 0);
+//            
+//           //slow the loop for display reasons.
+//            Timer.delay(.02);
             
-           //slow the loop for display reasons.
-            Timer.delay(.02);
-        }
+            
+            try {
+                   /**
+                    * Do the image capture with the camera and apply the algorithm described above. This
+                    * sample will either get images from the camera or from an image file stored in the top
+                    * level directory in the flash memory on the cRIO. The file name in this case is "testImage.jpg"
+                    * 
+                    */
+                   ColorImage image = camera.getImage();     // comment if using stored images
+                   //ColorImage image;                           // next 2 lines read image from flash on cRIO
+                   //image = new RGBImage("/testImage.jpg");		// get the sample image from the cRIO flash
+                   BinaryImage thresholdImage = image.thresholdHSV(60, 100, 90, 255, 20, 255);   // keep only red objects
+                   //thresholdImage.write("/threshold.bmp");
+                   BinaryImage convexHullImage = thresholdImage.convexHull(false);          // fill in occluded rectangles
+                   //convexHullImage.write("/convexHull.bmp");
+                   BinaryImage filteredImage = convexHullImage.particleFilter(cc);           // filter out small particles
+                   //filteredImage.write("/filteredImage.bmp");
+
+
+                   //iterate through each particle and score to see if it is a target
+                  FRC2013Team2037_Main.Scores scores[] = new FRC2013Team2037_Main.Scores[filteredImage.getNumberParticles()];
+                   for (int i = 0; i < scores.length; i++) {
+                       ParticleAnalysisReport report = filteredImage.getParticleAnalysisReport(i);
+                       scores[i] = new Scores();
+
+                       scores[i].rectangularity = scoreRectangularity(report);
+                       scores[i].aspectRatioOuter = scoreAspectRatio(filteredImage,report, i, true);
+                       scores[i].aspectRatioInner = scoreAspectRatio(filteredImage, report, i, false);
+                       scores[i].xEdge = scoreXEdge(thresholdImage, report);
+                       scores[i].yEdge = scoreYEdge(thresholdImage, report);
+
+                       if(scoreCompare(scores[i], false))
+                       {
+
+                           System.out.println("particle: " + i + "is a High Goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
+                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, false));
+                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
+                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
+
+                       } else if (scoreCompare(scores[i], true)) {
+
+
+                           System.out.println("particle: " + i + "is a Middle Goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
+                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, true));
+                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
+                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
+
+                       } else {
+
+                           System.out.println("particle: " + i + "is not a goal");
+                           System.out.println("particle: " + i + "is not a goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
+                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
+   			  System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
+
+                       }
+
+                   }
+
+                   /**
+                    * all images in Java must be freed after they are used since they are allocated out
+                    * of C data structures. Not calling free() will cause the memory to accumulate over
+                    * each pass of this loop.
+                    */
+                   filteredImage.free();
+                   convexHullImage.free();
+                   thresholdImage.free();
+                   image.free();
+
+               } catch (AxisCameraException ex) {        // this is needed if the camera.getImage() is called
+                   ex.printStackTrace();
+               } catch (NIVisionException ex) {
+                   ex.printStackTrace();
+               }
+
+                 Timer.delay(.25);
+           }
+        
         
         stopRobot();  //Kill the motors on the robot
     }
@@ -349,12 +443,68 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_spikeRelay.set(Relay.Value.kOff);
             }
             else {
-                m_spikeRelay.setDirection(Relay.Direction.kForward);
-                m_spikeRelay.set(Relay.Value.kOn);
+                m_spikeRelay.set(Relay.Value.kForward);
+            }
+            
+            // Konnor added this
+            if (m_xBox1.getRawAxis(6) == 1) { //I want the input from the D pad for all of these .getRawAxis
+                // If Dpad is up, drives the motors one direction
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeShooterAngle.set(Relay.Value.kForward);
+               
+            }
+            else if (m_xBox1.getRawAxis(6) == -1) {
+                // If Dpad is down, drives the motors the other direction
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeShooterAngle.set(Relay.Value.kReverse);
+          }
+            else if (m_xBox1.getRawAxis(6) == 0){
+                //Turns off motors
+                m_spikeShooterAngle.set(Relay.Value.kOff);
             }
             
             
+            if (m_xBox1.getRawButton(4)) { //Will increase speed of motors when right DPad is held
+                m_shooterFrontSpeed = 0;
+                m_shooterBackSpeed = 0;
+            }
+            else if (m_xBox1.getRawButton(1)) {
+                m_shooterFrontSpeed = 1;
+                m_shooterBackSpeed = 1;
+            }
+            if (m_xBox1.getRawButton(2)) {
+                m_servoLC.set(1);
+                m_servoRC.set(1);
+            }
+            else if (m_xBox1.getRawButton(3)) {
+                m_servoLC.set(0);
+                m_servoRC.set(0);
+            }
+            if (m_xBox1.getRawButton(5)) { //I want the input from the D pad for all of these .getRawAxis
+                // If Dpad is up, drives the motors one direction
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeBatteryMotor.set(Relay.Value.kForward);
+               
+            }
+            else if (m_xBox1.getRawButton(6)) {
+                // If Dpad is down, drives the motors the other direction
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeBatteryMotor.set(Relay.Value.kReverse);
+            }
+            else {
+                //Turns off motors
+                m_spikeBatteryMotor.set(Relay.Value.kOff);
+            }
+            System.out.println("Left Bump " + m_xBox1.getRawButton(5) + " Right Bump " + m_xBox1.getRawButton(6));
+            //System.out.println("ServoLC position " + m_servoLC.getPosition() + " ServoRC position " + m_servoRC.getPosition());
+            // System.out.println("Shooter Front " + m_shooterFrontSpeed + " Shooter Back " + m_shooterBackSpeed);
+            m_shooterFront.set(m_shooterFrontSpeed);
+            m_shooterBack.set(m_shooterBackSpeed);
+            
+            // End konnor's work
             m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
+            
+            
             
             
             //slow the loop for display reasons.
