@@ -7,7 +7,7 @@
 
 
 //Version
-// 0.1.3
+// 0.1.4
 
 
 package edu.wpi.first.wpilibj.templates;
@@ -141,9 +141,13 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     //Target Variables
     
-    double distanceCenterTarget = 0;
+    double m_distanceCenterTarget = 1000000;
     boolean visableCenterTarget = false;
     int ageCenterTarget = 0;
+    
+    //Average Variables
+    double m_tempVariable = 1000000;
+    double m_average = 0;
     
     //gyro and temp Variables
     //double m_change;      for temp    
@@ -721,9 +725,15 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                            
                           
                            System.out.println("particle: " + i + " is a High Goal  centerX: " + report.center_mass_x_normalized + " centerY: " + report.center_mass_y_normalized);
-                          distanceCenterTarget =   computeDistance(thresholdImage, report, i, false);
-                          System.out.println("Distance: " + distanceCenterTarget);
-                          updateScreen(2,("TargetDis: " + distanceCenterTarget) );
+                           
+                           double m_localDistance = computeDistance(thresholdImage, report, i, false);
+                          if (m_localDistance < (m_distanceCenterTarget * 1.25)){
+                           m_average = (m_localDistance + m_tempVariable + m_distanceCenterTarget)/3;
+                           m_distanceCenterTarget = m_tempVariable;
+                           m_tempVariable = m_localDistance;
+                           System.out.println("Distance: " + m_distanceCenterTarget); 
+                          }
+                          updateScreen(2,("TargetDis: " + m_distanceCenterTarget) );
                            System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
                            System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
                          
