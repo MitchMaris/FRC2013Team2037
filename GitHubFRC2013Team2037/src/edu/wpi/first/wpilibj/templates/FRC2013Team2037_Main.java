@@ -54,6 +54,7 @@ package edu.wpi.first.wpilibj.templates;
 
 
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.DriverStationLCD;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Gyro;
 import edu.wpi.first.wpilibj.Jaguar;
@@ -84,6 +85,7 @@ import edu.wpi.first.wpilibj.image.ParticleAnalysisReport;
  */
 public class FRC2013Team2037_Main extends SimpleRobot {
     
+    //Robot Init variables.
     Joystick m_xBox1 = new Joystick(1);  //driver joystick, controller 1
     Joystick m_xBox2 = new Joystick(2);  //shooter joystick, controller 2
     //robot Drive init, motor input order is frontLeft, rearLeft, frontRight, rearRight
@@ -91,7 +93,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3);
     SpeedController m_shooterFront = new Victor(5); //Konnor //Drive wheels for shooter 
     SpeedController m_shooterBack = new Jaguar(6);
-    DigitalInput m_microSwitch = new DigitalInput(1);  //microSwitch1
+    DigitalInput m_microSwitch1 = new DigitalInput(1);  //microSwitch1
+    DigitalInput m_microSwitch2 = new DigitalInput(2); //microSwitch2
     Gyro m_gyro = new Gyro(1);
     Relay m_spikeRelay = new Relay(1);  //spikeRelay to blink a light via microSwitch1
     Relay m_spikeShooterAngle = new Relay(2); //Konnor //Spike relay for controling angle motors
@@ -100,7 +103,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     CriteriaCollection m_cc;      // the criteria for doing the particle filter operation
     Servo m_servoLC = new Servo(9);
     Servo m_servoRC = new Servo(10);
-
+    
     //Global Variables
     double m_magnitude;
     double m_direction;
@@ -113,6 +116,16 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     double m_gyroDataCurrent;
     double m_gyroSensitivity = 0.20;
     double m_visionLoopDelay = 0.25;
+    
+    //Screen Variables
+    String m_blankScreenStr = "                             ";
+    String m_screenLine1 = m_blankScreenStr;
+    String m_screenLine2 = m_blankScreenStr;
+    String m_screenLine3 = m_blankScreenStr;
+    String m_screenLine4 = m_blankScreenStr;
+    String m_screenLine5 = m_blankScreenStr;
+    String m_screenLine6 = m_blankScreenStr;
+    int m_lastUpdateCount = 0;
         
     //vision code.
     final int XMAXSIZE = 24;
@@ -145,45 +158,56 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     }
     
     //This function is called once when the robot is powered on.
-    public void robotInit() {
+    public void robotInit() { 
+        
+        //start updateScreenTask task
+        try {
+            Thread screenThread = new Thread(updateScreenTask);
+            screenThread.start();
+            System.out.println("screenThread init complete....");
+            updateScreen(1, "screenThread init complete....");
+        }
+        catch (Exception ex) {
+            System.out.println("screenThread init FAILED!!!!  Reason: " + ex);
+            updateScreen(1, "screenThread init FAILED!!!!");
+        
+        }
+        
         m_camera = AxisCamera.getInstance();  // get an instance of the camera
         m_cc = new CriteriaCollection();      // create the criteria for the particle filter
         m_cc.addCriteria(NIVision.MeasurementType.IMAQ_MT_AREA, 500, 65535, false);
         
         m_spikeRelay.set(Relay.Value.kOff);
         m_spikeShooterAngle.set(Relay.Value.kOff);
-        m_servoLC.set(0.5);
-        m_servoRC.set(0);
+        m_servoLC.set(0);
+        m_servoRC.set(0.5);
+        
         
         try {
             m_gyro.reset();
             Timer.delay(.5);
             System.out.println("Gyro init complete....");
+            updateScreen(2, "Gyro init complete....");
         } 
         catch(Exception ex) {
             System.out.println("Gyro init FAILED!!!!");
+            updateScreen(2, "Gyro init FAILED!!!!");
         }
         
         //start the vision processing task
         try {
-            Thread visionThread = new Thread(mainVisionProcessing);
+            
+            Thread visionThread = new Thread(visionProcessingTask);
             visionThread.start();
-            System.out.println("VisionThread init complete....");
+            System.out.println("visionProcessingTask init complete....");
+            updateScreen(3, "visionProcessingTask init complete....");
         }
         catch (Exception ex) {
-            System.out.println("VisionThread init FAILED!!!!  Reason: " + ex);
+            System.out.println("visionProcessingTask init FAILED!!!!  Reason: " + ex);
+            updateScreen(3, "visionProcessingTask init FAILED!!!!");
         }
                 
-        //start test task
-        try {
-            Thread testThread = new Thread(testRunnable);
-            testThread.start();
-            System.out.println("testThread init complete....");
-        }
-        catch (Exception ex) {
-            System.out.println("testThread init FAILED!!!!  Reason: " + ex);
-        
-        }
+
 
         
     }
@@ -194,7 +218,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     public void autonomous() {
         
         m_mecanumDrive.setSafetyEnabled(false);
+        m_spikeRelay.set(Relay.Value.kForward);
         System.out.println("We are running!");
+        int counter = 0;
         
         while (isAutonomous() && isEnabled()) {
            
@@ -204,80 +230,82 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 //            Timer.delay(.02);
             
             
-//            try {
-//                   /**
-//                    * Do the image capture with the camera and apply the algorithm described above. This
-//                    * sample will either get images from the camera or from an image file stored in the top
-//                    * level directory in the flash memory on the cRIO. The file name in this case is "testImage.jpg"
-//                    * 
-//                    */
-//                   ColorImage image = camera.getImage();     // comment if using stored images
-//                   //ColorImage image;                           // next 2 lines read image from flash on cRIO
-//                   //image = new RGBImage("/testImage.jpg");		// get the sample image from the cRIO flash
-//                   BinaryImage thresholdImage = image.thresholdHSV(60, 100, 90, 255, 20, 255);   // keep only red objects
-//                   //thresholdImage.write("/threshold.bmp");
-//                   BinaryImage convexHullImage = thresholdImage.convexHull(false);          // fill in occluded rectangles
-//                   //convexHullImage.write("/convexHull.bmp");
-//                   BinaryImage filteredImage = convexHullImage.particleFilter(cc);           // filter out small particles
-//                   //filteredImage.write("/filteredImage.bmp");
-//
-//
-//                   //iterate through each particle and score to see if it is a target
-//                  FRC2013Team2037_Main.Scores scores[] = new FRC2013Team2037_Main.Scores[filteredImage.getNumberParticles()];
-//                   for (int i = 0; i < scores.length; i++) {
-//                       ParticleAnalysisReport report = filteredImage.getParticleAnalysisReport(i);
-//                       scores[i] = new Scores();
-//
-//                       scores[i].rectangularity = scoreRectangularity(report);
-//                       scores[i].aspectRatioOuter = scoreAspectRatio(filteredImage,report, i, true);
-//                       scores[i].aspectRatioInner = scoreAspectRatio(filteredImage, report, i, false);
-//                       scores[i].xEdge = scoreXEdge(thresholdImage, report);
-//                       scores[i].yEdge = scoreYEdge(thresholdImage, report);
-//
-//                       if(scoreCompare(scores[i], false))
-//                       {
-//
-//                           System.out.println("particle: " + i + "is a High Goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
-//                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, false));
-//                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
-//                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
-//
-//                       } else if (scoreCompare(scores[i], true)) {
-//
-//
-//                           System.out.println("particle: " + i + "is a Middle Goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
-//                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, true));
-//                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
-//                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
-//
-//                       } else {
-//
-//                           System.out.println("particle: " + i + "is not a goal");
-//                           System.out.println("particle: " + i + "is not a goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
+            
+            try {
+                   /**
+                    * Do the image capture with the camera and apply the algorithm described above. This
+                    * sample will either get images from the camera or from an image file stored in the top
+                    * level directory in the flash memory on the cRIO. The file name in this case is "testImage.jpg"
+                    * 
+                    */
+                   ColorImage image = m_camera.getImage();     // comment if using stored images
+                   //ColorImage image;                           // next 2 lines read image from flash on cRIO
+                   //image = new RGBImage("/testImage.jpg");		// get the sample image from the cRIO flash
+                   BinaryImage thresholdImage = image.thresholdHSV(60, 100, 90, 255, 20, 255);   // keep only red objects
+                   //thresholdImage.write("/threshold.bmp");
+                   BinaryImage convexHullImage = thresholdImage.convexHull(false);          // fill in occluded rectangles
+                   //convexHullImage.write("/convexHull.bmp");
+                   BinaryImage filteredImage = convexHullImage.particleFilter(m_cc);           // filter out small particles
+                   //filteredImage.write("/filteredImage.bmp");
+
+
+                   //iterate through each particle and score to see if it is a target
+                  FRC2013Team2037_Main.Scores scores[] = new FRC2013Team2037_Main.Scores[filteredImage.getNumberParticles()];
+                   for (int i = 0; i < scores.length; i++) {
+                       ParticleAnalysisReport report = filteredImage.getParticleAnalysisReport(i);
+                       scores[i] = new Scores();
+
+                       scores[i].rectangularity = scoreRectangularity(report);
+                       scores[i].aspectRatioOuter = scoreAspectRatio(filteredImage,report, i, true);
+                       scores[i].aspectRatioInner = scoreAspectRatio(filteredImage, report, i, false);
+                       scores[i].xEdge = scoreXEdge(thresholdImage, report);
+                       scores[i].yEdge = scoreYEdge(thresholdImage, report);
+
+                       if(scoreCompare(scores[i], false))
+                       {
+
+                           System.out.println("particle: " + i + " is a High Goal  centerX: " + report.center_mass_x_normalized + " centerY: " + report.center_mass_y_normalized);
+                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, false));
+                           System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
+                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
+
+                       } else if (scoreCompare(scores[i], true)) {
+
+
+                           System.out.println("particle: " + i + " is a Middle Goal  centerX: " + report.center_mass_x_normalized + " centerY: " + report.center_mass_y_normalized);
+                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, true));
+                           System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
+                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
+
+                       } else {
+
+                           System.out.println("particle: " + i + " is not a goal");
+//                           System.out.println("particle: " + i + " is not a goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
 //                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
 //   			  System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
-//
-//                       }
-//
-//                   }
-//
-//                   /**
-//                    * all images in Java must be freed after they are used since they are allocated out
-//                    * of C data structures. Not calling free() will cause the memory to accumulate over
-//                    * each pass of this loop.
-//                    */
-//                   filteredImage.free();
-//                   convexHullImage.free();
-//                   thresholdImage.free();
-//                   image.free();
-//
-//               } catch (AxisCameraException ex) {        // this is needed if the camera.getImage() is called
-//                   ex.printStackTrace();
-//               } catch (NIVisionException ex) {
-//                   ex.printStackTrace();
-//               }
-//
-//                 Timer.delay(.25);
+
+                       }
+
+                   }
+
+                   /**
+                    * all images in Java must be freed after they are used since they are allocated out
+                    * of C data structures. Not calling free() will cause the memory to accumulate over
+                    * each pass of this loop.
+                    */
+                   filteredImage.free();
+                   convexHullImage.free();
+                   thresholdImage.free();
+                   image.free();
+
+               } catch (AxisCameraException ex) {        // this is needed if the camera.getImage() is called
+                   ex.printStackTrace();
+               } catch (NIVisionException ex) {
+                   ex.printStackTrace();
+               }
+                 System.out.println("Auto loop # " + counter);
+                 Timer.delay(.25);
+                 counter++;
            }
         
         
@@ -286,7 +314,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 
     //This function is called once each time the robot enters operator control.
     public void operatorControl() {
-        
+       
        
         //local Teleop variables
         double m_xb1DeadZone = 0.165;  //we need to play with this number to see what needs to be changed
@@ -358,7 +386,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }
            
             
-            
+            //remove below if we do not use.
             //level all joystick inputs, run through scaling code
             if (Math.abs(m_xBox1.getRawAxis(1)) > m_xb1DeadZone)
             {
@@ -413,7 +441,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             {
                 m_xb1_ax6 = 0;
             }
-
+            //end remove 
+            
+            
             //debug code
 //            if (m_magnitude != 0)
 //            {
@@ -452,14 +482,15 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 //                System.out.println("Axis 6 = "+ m_xb1_ax6);
 //            }
             
-//            //Uncomment to see more debug lines
-//            System.out.println("MicroSwitch says.... " + m_microSwitch.get());
+            //Uncomment to see more debug lines
+            //System.out.println("MicroSwitch1 says.... " + m_microSwitch1.get());
+            //System.out.println("MicroSwitch2 says.... " + m_microSwitch2.get());
 //            System.out.println("SpikeRelay says....  " + m_spikeRelay.get());
 //            System.out.println("Gyro Says....        " + m_gyroDataCurrent);
             
             
             //microSwitch and spikeRelay testing code
-            if (m_microSwitch.get() == false){
+            if (m_microSwitch1.get() == false){
                 m_spikeRelay.set(Relay.Value.kOff);
             }
             else {
@@ -534,7 +565,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
             
             //slow the loop for display reasons.
-            Timer.delay(.1);
+            Timer.delay(.075);
         }
         
         stopRobot();  //Kill the motors on the robot
@@ -567,22 +598,65 @@ public class FRC2013Team2037_Main extends SimpleRobot {
       
     }
     
-    Runnable testRunnable = new Runnable()
+    public void updateScreen(int lineCount, String lineContent) {
+       lineContent = lineContent.substring(0, m_blankScreenStr.length()); //trim the output to the max length
+       
+        switch (lineCount) {
+            case 1: m_screenLine1 = lineContent;
+                    break;
+            case 2: m_screenLine1 = lineContent;
+                    break;
+            case 3: m_screenLine1 = lineContent;
+                    break;
+            case 4: m_screenLine1 = lineContent;
+                    break;
+            case 5: m_screenLine1 = lineContent;
+                    break;
+            case 6:  m_screenLine1 = lineContent;
+                    break;
+            default: break;
+        }
+        m_lastUpdateCount = 0;
+    }
+    
+    Runnable updateScreenTask = new Runnable()
     {
 	public void run()
 	{
-            int count = 1;
+    
             while (true) {
-                System.out.println("TestRunnable Loop, Count is: " + count);
-                count++;
-                Timer.delay(2);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser1, 1, m_blankScreenStr);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser1, 1, m_screenLine1);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser2, 1, m_blankScreenStr);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser2, 1, m_screenLine2);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser3, 1, m_blankScreenStr);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser3, 1, m_screenLine3);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser4, 1, m_blankScreenStr);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser4, 1, m_screenLine4);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser5, 1, m_blankScreenStr);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser5, 1, m_screenLine5);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser6, 1, m_blankScreenStr);
+                DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser6, 1, m_screenLine6);
+                DriverStationLCD.getInstance().updateLCD();
+                
+                Timer.delay(.25);
+                
+                if (m_lastUpdateCount > 40) {
+                    m_screenLine1 = m_blankScreenStr;
+                    m_screenLine2 = m_blankScreenStr;
+                    m_screenLine3 = m_blankScreenStr;
+                    m_screenLine4 = m_blankScreenStr;
+                    m_screenLine5 = m_blankScreenStr;
+                    m_screenLine6 = m_blankScreenStr;
+                }
+                System.out.println("m_lastUpdateCount = " + m_lastUpdateCount);
             }
         }
     };
     
     
     // Vision Processing thread
-    Runnable mainVisionProcessing = new Runnable()
+    Runnable visionProcessingTask = new Runnable()
     {
 	public void run()
         {
@@ -591,6 +665,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
 	    while (true) {
                 
+//                m_spikeRelay.set(Relay.Value.kForward);
                 try {
                     // System.out.println("First line in TRY of VisionThread");
                    /**
@@ -668,10 +743,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                    ex.printStackTrace();
                }
                    
-                Timer.delay(1);
-                //Timer.delay(.25);
+                Timer.delay(m_visionLoopDelay);
                 System.out.println("Vision Loop " + loopCount);
                 loopCount++;
+                
+//                m_spikeRelay.set(Relay.Value.kOff);
           }
                  
         }
