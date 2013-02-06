@@ -139,6 +139,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     double m_autonomousLoopDelay = 0.075;
     double m_operatorControlLoopDelay = 0.075;
     
+    //Target Variables
+    
+    double distanceCenterTarget = 0;
+    boolean visableCenterTarget = false;
+    int ageCenterTarget = 0;
+    
     //gyro and temp Variables
     //double m_change;      for temp    
     //double m_temperature; for temp
@@ -321,6 +327,14 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
             if(m_xBox1.getRawAxis(3) < -0.5) {
                 m_slowMotorSpeed = 1;
+            }
+            
+            //quick test to see if you have the driver controller
+            if (m_xBox1.getRawButton(7)) { //I want the input from the D pad for all of these .getRawAxis
+                updateScreen(6, "Driver Controller");
+            }
+            else {
+                updateScreen(6, m_blankScreenStr);
             }
                
             //this is from the left joystick
@@ -704,8 +718,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                        if(scoreCompare(scores[i], false))
                        {
 
+                           
+                          
                            System.out.println("particle: " + i + " is a High Goal  centerX: " + report.center_mass_x_normalized + " centerY: " + report.center_mass_y_normalized);
-                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, false));
+                          distanceCenterTarget =   computeDistance(thresholdImage, report, i, false);
+                          System.out.println("Distance: " + distanceCenterTarget);
+                          updateScreen(2,("TargetDis: " + distanceCenterTarget) );
                            System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
                            System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
                          
