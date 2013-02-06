@@ -7,7 +7,7 @@
 
 
 //Version
-// 0.1.1
+// 0.1.2
 
 
 package edu.wpi.first.wpilibj.templates;
@@ -136,6 +136,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     double m_rotation;
     double m_shooterFrontSpeed;
     double m_shooterBackSpeed;
+    double m_autonomousLoopDelay = 0.075;
+    double m_operatorControlLoopDelay = 0.075;
     
     //gyro and temp Variables
     //double m_change;      for temp    
@@ -156,12 +158,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     String m_screenLine5 = m_blankScreenStr;
     String m_screenLine6 = m_blankScreenStr;
     double m_screenLoopDelay = 0.5;
-        
-    
+     
     //END Global Variables
     
     //State Variables
-    
+    int m_disabledCount = 0;
     //END State Variables
     
     //vision code Variables
@@ -197,12 +198,15 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //This function is called once when the robot is powered on.
     public void robotInit() { 
         
+        
         //start updateScreenTask task
         try {
             Thread screenThread = new Thread(updateScreenTask);
             screenThread.start();
+            clearScreen();
+            updateScreen(1, "robotInit()");
+            updateScreen(2, "screen, CHECK........");
             System.out.println("screenThread init complete....");
-            updateScreen(1, "screenThread init complete....");
         }
         catch (Exception ex) {
             System.out.println("screenThread init FAILED!!!!  Reason: " + ex);
@@ -229,12 +233,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         try {
             m_gyro.reset();
             Timer.delay(.5);
+            updateScreen(3, "Gyro, GOOD........");
             System.out.println("Gyro init complete....");
-            updateScreen(2, "Gyro init complete....");
         } 
         catch(Exception ex) {
+            updateScreen(3, "Gyro, FAILED!!!!!!!!");
             System.out.println("Gyro init FAILED!!!!");
-            updateScreen(2, "Gyro init FAILED!!!!");
         }
         
         //start the vision processing task
@@ -242,15 +246,15 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
             Thread visionThread = new Thread(visionProcessingTask);
             visionThread.start();
+            updateScreen(4, "vision, CHECK........");
             System.out.println("visionProcessingTask init complete....");
-            updateScreen(3, "visionProcessingTask init complete....");
         }
         catch (Exception ex) {
+            updateScreen(4, "vision, FAILED!!!!!!!!");
             System.out.println("visionProcessingTask init FAILED!!!!  Reason: " + ex);
-            updateScreen(3, "visionProcessingTask init FAILED!!!!");
         }
                 
-
+        updateScreen(5, "abcdefghijklmnopqrstuvwxyz1234567891011121314151617181920");
 
         
     }
@@ -259,98 +263,22 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     //This function is called once each time the robot enters autonomous mode.
     public void autonomous() {
+        clearScreen();
+        updateScreen(1, "autonomous()");
         
         m_mecanumDrive.setSafetyEnabled(false);
         m_spikeRelay.set(Relay.Value.kForward);
         System.out.println("We are running!");
-        int counter = 0;
+        int loopCount = 1;
         
         while (isAutonomous() && isEnabled()) {
-           
-//            m_mecanumDrive.drive(.5, 0);
-//            
-//           //slow the loop for display reasons.
-//            Timer.delay(.02);
             
-            
-            
-            try {
-                   /**
-                    * Do the image capture with the camera and apply the algorithm described above. This
-                    * sample will either get images from the camera or from an image file stored in the top
-                    * level directory in the flash memory on the cRIO. The file name in this case is "testImage.jpg"
-                    * 
-                    */
-                   ColorImage image = m_camera.getImage();     // comment if using stored images
-                   //ColorImage image;                           // next 2 lines read image from flash on cRIO
-                   //image = new RGBImage("/testImage.jpg");		// get the sample image from the cRIO flash
-                   BinaryImage thresholdImage = image.thresholdHSV(60, 100, 90, 255, 20, 255);   // keep only red objects
-                   //thresholdImage.write("/threshold.bmp");
-                   BinaryImage convexHullImage = thresholdImage.convexHull(false);          // fill in occluded rectangles
-                   //convexHullImage.write("/convexHull.bmp");
-                   BinaryImage filteredImage = convexHullImage.particleFilter(m_cc);           // filter out small particles
-                   //filteredImage.write("/filteredImage.bmp");
-
-
-                   //iterate through each particle and score to see if it is a target
-                  FRC2013Team2037_Main.Scores scores[] = new FRC2013Team2037_Main.Scores[filteredImage.getNumberParticles()];
-                   for (int i = 0; i < scores.length; i++) {
-                       ParticleAnalysisReport report = filteredImage.getParticleAnalysisReport(i);
-                       scores[i] = new Scores();
-
-                       scores[i].rectangularity = scoreRectangularity(report);
-                       scores[i].aspectRatioOuter = scoreAspectRatio(filteredImage,report, i, true);
-                       scores[i].aspectRatioInner = scoreAspectRatio(filteredImage, report, i, false);
-                       scores[i].xEdge = scoreXEdge(thresholdImage, report);
-                       scores[i].yEdge = scoreYEdge(thresholdImage, report);
-
-                       if(scoreCompare(scores[i], false))
-                       {
-
-                           System.out.println("particle: " + i + " is a High Goal  centerX: " + report.center_mass_x_normalized + " centerY: " + report.center_mass_y_normalized);
-                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, false));
-                           System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
-                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
-
-                       } else if (scoreCompare(scores[i], true)) {
-
-
-                           System.out.println("particle: " + i + " is a Middle Goal  centerX: " + report.center_mass_x_normalized + " centerY: " + report.center_mass_y_normalized);
-                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, true));
-                           System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
-                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
-
-                       } else {
-
-                           System.out.println("particle: " + i + " is not a goal");
-//                           System.out.println("particle: " + i + " is not a goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
-//                           System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
-//   			  System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
-
-                       }
-
-                   }
-
-                   /**
-                    * all images in Java must be freed after they are used since they are allocated out
-                    * of C data structures. Not calling free() will cause the memory to accumulate over
-                    * each pass of this loop.
-                    */
-                   filteredImage.free();
-                   convexHullImage.free();
-                   thresholdImage.free();
-                   image.free();
-
-               } catch (AxisCameraException ex) {        // this is needed if the camera.getImage() is called
-                   ex.printStackTrace();
-               } catch (NIVisionException ex) {
-                   ex.printStackTrace();
-               }
-                 System.out.println("Auto loop # " + counter);
-                 Timer.delay(.25);
-                 counter++;
-           }
-        
+            Timer.delay(m_autonomousLoopDelay);
+            if (loopCount % 100 == 0 || loopCount == 1) {
+                System.out.println("autonomous Loop " + loopCount);
+            }
+            loopCount++;
+        }
         
         stopRobot();  //Kill the motors on the robot
     }
@@ -358,6 +286,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //This function is called once each time the robot enters operator control.
     public void operatorControl() {
        
+        clearScreen();
+        updateScreen(1, "operatorControl()");
        
         //local Teleop variables
         double m_xb1DeadZone = 0.165;  //we need to play with this number to see what needs to be changed
@@ -368,6 +298,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         double m_xb1_ax5;
         double m_xb1_ax6;
         double m_slowMotorSpeed;
+        int loopCount = 1;
 
         m_mecanumDrive.setSafetyEnabled(true);
         m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kFrontRight, true);
@@ -382,7 +313,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             m_gyroDataCurrent = m_gyro.getAngle();
             
             //kill button code
-            if (m_xBox1.getRawButton(8)) {
+            if (m_xBox1.getRawButton(8) || m_xBox2.getRawButton(8)) {
                 stopRobot();
             }
             
@@ -410,7 +341,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             {
                 m_direction = m_xBox1.getDirectionDegrees();
                 
-            }
+            } 
             else
             {
                 m_direction = 0;
@@ -429,8 +360,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }
            
             
-            //remove below if we do not use.
-            //level all joystick inputs, run through scaling code
+//            //remove below if we do not use.
+//            //level all joystick inputs, run through scaling code
             if (Math.abs(m_xBox1.getRawAxis(1)) > m_xb1DeadZone)
             {
                 m_xb1_ax1 = scaledInput(m_xBox1.getRawAxis(1));
@@ -488,18 +419,18 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
             
             //debug code
-//            if (m_magnitude != 0)
-//            {
-//                System.out.println("Magnitude: " + m_magnitude);
-//            }
-//            if (Math.abs(m_xb1_ax1) > 0 || Math.abs(m_xb1_ax2) > 0)
-//            {
-//                System.out.println("Direction: " + m_direction);
-//            }
-//            if (m_rotation != 0)
-//            {
-//                System.out.println("Rotation: " + m_rotation);
-//            }            
+            if (m_magnitude != 0)
+            {
+                System.out.println("Magnitude: " + m_magnitude);
+            }
+            if (Math.abs(m_xb1_ax1) > 0 || Math.abs(m_xb1_ax2) > 0)
+            {
+                System.out.println("Direction: " + m_direction);
+            }
+            if (m_rotation != 0)
+            {
+                System.out.println("Rotation: " + m_rotation);
+            }            
 //            if (m_xb1_ax1 != 0)
 //            {
 //                System.out.println("Axis 1 = "+ m_xb1_ax1);
@@ -541,44 +472,41 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             }
             
             // Konnor added this
-            if (m_xBox1.getRawAxis(6) == 1) { //I want the input from the D pad for all of these .getRawAxis
-                // If Dpad is up, drives the motors one direction
-                //m_spikeRelay2.set(Relay.Value.kOn);
+            if (m_xBox1.getRawAxis(6) == 1) {
                 m_spikeShooterAngle.set(Relay.Value.kForward);
-               
             }
             else if (m_xBox1.getRawAxis(6) == -1) {
-                // If Dpad is down, drives the motors the other direction
-                //m_spikeRelay2.set(Relay.Value.kOn);
                 m_spikeShooterAngle.set(Relay.Value.kReverse);
-          }
+            }
             else if (m_xBox1.getRawAxis(6) == 0){
-                //Turns off motors
                 m_spikeShooterAngle.set(Relay.Value.kOff);
             }
             
             
-            if (m_xBox1.getRawButton(4)) { //Will increase speed of motors when right DPad is held
-                m_shooterFrontSpeed = 0;
-                m_shooterBackSpeed = 0;
-            }
-            else if (m_xBox1.getRawButton(1)) {
-                m_shooterFrontSpeed = 1;
-                m_shooterBackSpeed = 1;
-            }
-            if (m_xBox1.getRawButton(2)) {
-                m_servoLClutch.set(1);
-                m_servoRClutch.set(1);
-            }
-            else if (m_xBox1.getRawButton(3)) {
-                m_servoLClutch.set(0);
-                m_servoRClutch.set(0);
-            }
+//            if (m_xBox1.getRawButton(4)) {
+//                m_shooterFrontSpeed = 0;
+//                m_shooterBackSpeed = 0;
+//            }
+//            else if (m_xBox1.getRawButton(1)) {
+//                m_shooterFrontSpeed = 1;
+//                m_shooterBackSpeed = 1;
+//            }
+//            
+//            
+//            if (m_xBox1.getRawButton(2)) {
+//                m_servoLClutch.set(1);
+//                m_servoRClutch.set(1);
+//            }
+//            else if (m_xBox1.getRawButton(3)) {
+//                m_servoLClutch.set(0);
+//                m_servoRClutch.set(0);
+//            }
+            
+            
             if (m_xBox1.getRawButton(5)) { //I want the input from the D pad for all of these .getRawAxis
                 // If Dpad is up, drives the motors one direction
                 //m_spikeRelay2.set(Relay.Value.kOn);
                 m_spikeBatteryMotor.set(Relay.Value.kForward);
-               
             }
             else if (m_xBox1.getRawButton(6)) {
                 // If Dpad is down, drives the motors the other direction
@@ -589,6 +517,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 //Turns off motors
                 m_spikeBatteryMotor.set(Relay.Value.kOff);
             }
+            
+            
             if (m_xBox1.getRawButton(5) || m_xBox1.getRawButton(6)) {
                 System.out.println("Left Bump " + m_xBox1.getRawButton(5) + " Right Bump " + m_xBox1.getRawButton(6));
             }
@@ -602,14 +532,21 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
             
             // End konnor's work
-            m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
+            
+            if (!m_xBox2.getRawButton(4) || !m_xBox2.getRawButton(3) || !m_xBox2.getRawButton(2)) {
+                m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
+            }
             
             
-             
+            //slow the loop.  
+            //It must be at least (0.1) or better, sugguest a little faster inorder to not kill the robot for being too slow.
+            Timer.delay(m_operatorControlLoopDelay);
             
+            if (loopCount % 100 == 0 || loopCount == 1) {
+                System.out.println("operatorControl Loop " + loopCount);
+            }
+            loopCount++;
             
-            //slow the loop for display reasons.
-            Timer.delay(.075);
         }
         
         stopRobot();  //Kill the motors on the robot
@@ -618,7 +555,19 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     //FRC Default test()
     public void test() {
+        clearScreen();
+        updateScreen(1, "test()");
+    }
     
+    //overide the default default()
+    public void disabled() {
+        
+        stopRobot();
+        if (m_disabledCount > 0) {    
+            clearScreen();
+            updateScreen(1, "disabled()");
+        }
+        m_disabledCount++;
     }
     
     //scaled motor input
@@ -645,32 +594,43 @@ public class FRC2013Team2037_Main extends SimpleRobot {
       
     }
     
+    //clear the screen
+    public void clearScreen() {
+        for (int i = 1; i <= 6; i++) {
+            updateScreen(i, m_blankScreenStr);
+        }
+    }
+    
+    //function to update variables to be displayed
     public void updateScreen(int lineCount, String lineContent) {
-       lineContent = lineContent.substring(0, m_blankScreenStr.length()); //trim the output to the max length
+//       lineContent = lineContent.substring(0, m_blankScreenStr.length()); //trim the output to the max length
        
         switch (lineCount) {
             case 1: m_screenLine1 = lineContent;
                     break;
-            case 2: m_screenLine1 = lineContent;
+            case 2: m_screenLine2 = lineContent;
                     break;
-            case 3: m_screenLine1 = lineContent;
+            case 3: m_screenLine3 = lineContent;
                     break;
-            case 4: m_screenLine1 = lineContent;
+            case 4: m_screenLine4 = lineContent;
                     break;
-            case 5: m_screenLine1 = lineContent;
+            case 5: m_screenLine5 = lineContent;
                     break;
-            case 6:  m_screenLine1 = lineContent;
+            case 6:  m_screenLine6 = lineContent;
                     break;
             default: break;
         }
     }
     
+    //update the screen Thread
     Runnable updateScreenTask = new Runnable()
     {
 	public void run()
 	{
-    
+            int loopCount = 1;
+            
             while (true) {
+                
                 DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser1, 1, m_blankScreenStr);
                 DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser1, 1, m_screenLine1);
                 DriverStationLCD.getInstance().println(DriverStationLCD.Line.kUser2, 1, m_blankScreenStr);
@@ -687,25 +647,28 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 
                 Timer.delay(m_screenLoopDelay);
                 
+                if (loopCount % 100 == 0 || loopCount == 1) {
+                    System.out.println("Screen Loop " + loopCount);
+                }
+                loopCount++;
+                
             }
         }
     };
-    
     
     // Vision Processing thread
     Runnable visionProcessingTask = new Runnable()
     {
 	public void run()
         {
+            Timer.delay(2);
             //System.out.println("First line in RUN of VisionThread");
             int loopCount = 1;
             
-            m_spikeVisionGreenLED.set(Relay.Value.kForward);
             
             
 	    while (true) {
                 
-//                m_spikeRelay.set(Relay.Value.kForward);
                 try {
                     // System.out.println("First line in TRY of VisionThread");
                    /**
@@ -745,8 +708,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                            System.out.println("Distance: " + computeDistance(thresholdImage, report, i, false));
                            System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
                            System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
-                           m_spikeRedLED.set(Relay.Value.kOff);
-                           m_spikeGreenLED.set(Relay.Value.kForward);
+                         
 
                        } else if (scoreCompare(scores[i], true)) {
 
@@ -755,8 +717,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                            System.out.println("Distance: " + computeDistance(thresholdImage, report, i, true));
                            System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
                            System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
-                           m_spikeRedLED.set(Relay.Value.kOff);
-                           m_spikeBlueLED.set(Relay.Value.kForward);
+                          
                             
 
                        } else {
@@ -765,7 +726,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
    //                        System.out.println("particle: " + i + "is not a goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
    //                        System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
    //			  System.out.println("ARouter: " + scores[i].aspectRatioOuter + "xEdge: " + scores[i].xEdge + "yEdge: " + scores[i].yEdge);
-                            m_spikeRedLED.set(Relay.Value.kForward);
+                            
                        }
                        
 
@@ -790,12 +751,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                }
                    
                 Timer.delay(m_visionLoopDelay);
-                m_spikeGreenLED.set(Relay.Value.kOff);
-                m_spikeBlueLED.set(Relay.Value.kOff);
-                System.out.println("Vision Loop " + loopCount);
+                if (loopCount % 100 == 0 || loopCount == 1) {
+                    System.out.println("Vision Loop " + loopCount);
+                }
                 loopCount++;
                 
-//                m_spikeRelay.set(Relay.Value.kOff);
           }
                  
         }
@@ -803,8 +763,6 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     };
     
 
-        
-    
     double computeDistance (BinaryImage image, ParticleAnalysisReport report, int particleNumber, boolean outer) throws NIVisionException {
             double rectShort, height;
             int targetHeight;
