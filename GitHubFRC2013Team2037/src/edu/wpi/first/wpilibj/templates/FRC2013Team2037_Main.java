@@ -334,8 +334,6 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kFrontRight, true);
         m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kRearRight, true);
         
-        m_spikeRelay.set(Relay.Value.kOn);
-        
         while (isOperatorControl() && isEnabled()) {
             m_slowMotorSpeed = .4;
             
@@ -649,21 +647,24 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 }
             }
             
-//            if (m_xBox1.getRawButton(1) == true && depressed == false) {
+//            if (m_xBox1.getRawButton(1) && depressed == false) {
 //                counter = counter + .1;
-//                m_lightController.set(counter);
-//                if (counter == 1) {
+//                if (counter >= 1) {
 //                    counter = 0;
 //                }
+//                m_lightController.set(counter);
 //                depressed = true;
+//                //System.out.println("counter # " + counter);
 //            }
-//            if (m_xBox1.getRawButton(1) == false && depressed == true) {
+//            if (!m_xBox1.getRawButton(1) && depressed == true) {
 //                depressed = false;
 //            }
+            
+            
             if (Math.abs(m_xBox1.getRawAxis(5)) > m_xb1DeadZone)
             {
                 //m_xb1_ax5 = scaledInput(m_xBox1.getRawAxis(5));
-                m_lightController.set(Math.abs(scaledInput(m_xBox1.getRawAxis(5))));
+                m_lightController.set(scaledInput(m_xBox1.getRawAxis(5)));
             }
             else
             {
@@ -671,9 +672,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_lightController.set(0);
             }
             // End Targeting Logic
-            m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
+           
             if (!m_xBox2.getRawButton(4) || !m_xBox2.getRawButton(3) || !m_xBox2.getRawButton(2)) {
-                
+                 m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
 
             }
             
