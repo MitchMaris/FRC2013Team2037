@@ -7,7 +7,7 @@
 
 
 //Version
-// 0.1.4
+// 0.1.5
 
 
 package edu.wpi.first.wpilibj.templates;
@@ -158,6 +158,17 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     
     //vision Variables
     double m_visionLoopDelay = 0.25;
+    
+    //LED Variables
+    boolean m_blink = false;
+    boolean m_lightOn = false;
+    int m_blinkCounter = 0;
+    
+    //Tracking Variables
+    double m_rotationCenterHigh;
+    double m_rotationCenterMiddle;
+    boolean m_highTargetVisible = false;
+    boolean m_middleTargetVisible = false;
     
     //Screen Variables
     String m_blankScreenStr = "                             ";
@@ -549,8 +560,77 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             m_shooterDriveBack.set(m_shooterBackSpeed); //Shooter motors, back
             
             
-            // End konnor's work
+            // LED turns on when within range
+//            if (m_distanceCenterTarget < 200) {
+//                m_spikeGreenLED.set(Relay.Value.kOn);
+//            }
+//            else {
+//                m_spikeGreenLED.set(Relay.Value.kOff);
+//            }
+//            //Blinking light logic.
+//            if (** Needs criteria here **) {
+//                m_blink = true;
+//            }
+//            else {
+//                m_blink = false;
+//                m_spikeRedLED.set(Relay.Value.kOff);
+//                m_blinkCounter = 0;
+//            }
+//            if (m_blink == true && m_lightOn == true) {
+//                m_spikeRedLED.set(Relay.Value.kOn);
+//                m_blinkCounter++;
+//                if (m_blinkCounter >= 10) {
+//                    m_lightOn = false;
+//                    m_blinkCounter = 0;
+//                }
+//            }
+//            else if (m_blink == true && m_lightOn == false) {
+//                m_spikeRedLED.set(Relay.Value.kOff);
+//                m_blinkCounter++;
+//                if (m_blinkCounter >= 10) {
+//                    m_lightOn = true;
+//                    m_blinkCounter = 0;
+//                }
+//            }
+            // Notes to self so I dont forget my ideas
+            // If the robot sees more than one target, it will prioritize the high target over the middle target.
+            // When the robot sees a target it will rotate towards the target, deaccelerating the rotation untill it stops on target,
+            //  by either using a matrix or a series of if statements that will break up the returned value into sections, each section having a different
+            //  corisponding level of power of rotation. 
+            // EveryTime the robot sees a target, though the vision processing will update a global variable for each target which is then passed to this logic.
+            // Targeting Logic
+//            if (m_rotationCenterHigh > 0){
+//                // all will rotate counter clock
+//                if (m_rotationCenterHigh >= .75 && m_rotationCenterHigh < .5) {
+//                    //set rotation 50%
+//                }
+//                else if (m_rotationCenterHigh >= .5 && m_rotationCenterHigh < .25) {
+//                    //set rotation 40%
+//                }
+//                else if (m_rotationCenterHigh >= .25 && m_rotationCenterHigh < .1) {
+//                    //set rotation 30%
+//                }
+//                else if (m_rotationCenterHigh >= .1) {
+//                    //set rotation 15%
+//                }
+//            }
+//            if (m_rotationCenterHigh < 0) {
+//                // all will rotate clockwise
+//                if (m_rotationCenterHigh <= -.75 && m_rotationCenterHigh > -.5) {
+//                    //set rotation 50%
+//                }
+//                else if (m_rotationCenterHigh <= -.5 && m_rotationCenterHigh > -.25) {
+//                    //set rotation 40%
+//                }
+//                else if (m_rotationCenterHigh <= -.25 && m_rotationCenterHigh > -.1) {
+//                    //set rotation 30%
+//                }
+//                else if (m_rotationCenterHigh <= -.1) {
+//                    //set rotation 15%
+//                }
+//            }
             
+            // End Targeting Logic
             if (!m_xBox2.getRawButton(4) || !m_xBox2.getRawButton(3) || !m_xBox2.getRawButton(2)) {
                 m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
             }
@@ -721,10 +801,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 
                        if(scoreCompare(scores[i], false))
                        {
-
-                           
-                          
-                           System.out.println("particle: " + i + " is a High Goal  centerX: " + report.center_mass_x_normalized + " centerY: " + report.center_mass_y_normalized);
+                           //m_highTargetVisible = true;
+                           m_rotationCenterHigh = report.center_mass_x_normalized;
+                           System.out.println("particle: " + i + " is a High Goal  centerX: " + m_rotationCenterHigh + " centerY: " + report.center_mass_y_normalized);
                            
                            double m_localDistance = computeDistance(thresholdImage, report, i, false);
                           if (m_localDistance < (m_distanceCenterTarget * 1.25)){
@@ -739,9 +818,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                          
 
                        } else if (scoreCompare(scores[i], true)) {
-
-
-                           System.out.println("particle: " + i + " is a Middle Goal  centerX: " + report.center_mass_x_normalized + " centerY: " + report.center_mass_y_normalized);
+                           //m_middleTargetVisible = true;
+                           m_rotationCenterMiddle = report.center_mass_x_normalized; 
+                           System.out.println("particle: " + i + " is a Middle Goal  centerX: " + m_rotationCenterMiddle + " centerY: " + report.center_mass_y_normalized);
                            System.out.println("Distance: " + computeDistance(thresholdImage, report, i, true));
                            System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
                            System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
@@ -749,7 +828,6 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                             
 
                        } else {
-
                            System.out.println("particle: " + i + " is not a goal");
    //                        System.out.println("particle: " + i + "is not a goal  centerX: " + report.center_mass_x_normalized + "centerY: " + report.center_mass_y_normalized);
    //                        System.out.println("rect: " + scores[i].rectangularity + "ARinner: " + scores[i].aspectRatioInner);
