@@ -7,7 +7,7 @@
 
 
 //Version
-// 0.1.5
+// 0.1.6
 
 
 package edu.wpi.first.wpilibj.templates;
@@ -89,6 +89,7 @@ import edu.wpi.first.wpilibj.image.ParticleAnalysisReport;
  * directory.
  */
 public class FRC2013Team2037_Main extends SimpleRobot {
+    //4 jaguars 4 motors 6 spikes 2 servos 3 victors
     
     //Robot Init variables.
     //Joysticks
@@ -101,7 +102,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3);
     
     SpeedController m_shooterDriveFront = new Victor(5); //Konnor //Drive wheels for shooter 
-    SpeedController m_shooterDriveBack = new Jaguar(6);  //change if using Victor
+    SpeedController m_shooterDriveBack = new Jaguar(6);  //change if using Victor 
+    SpeedController m_lightController = new Jaguar(10);
     
     Servo m_servoLClutch = new Servo(7); 
     Servo m_servoRClutch = new Servo(8);
@@ -142,11 +144,13 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //Target Variables
     
     double m_distanceCenterTarget = 1000000;
+    double m_distanceMiddleTarget = 1000000;
     boolean visableCenterTarget = false;
     int ageCenterTarget = 0;
     
     //Average Variables
     double m_tempVariable = 1000000;
+    double m_tempVariable2 = 100000;
     double m_average = 0;
     
     //gyro and temp Variables
@@ -169,6 +173,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     double m_rotationCenterMiddle;
     boolean m_highTargetVisible = false;
     boolean m_middleTargetVisible = false;
+    double m_rotationFactor = 0; //The amount of rotation we modify the already rotation.
+    
+    //Light Controller Variables
+    boolean depressed = false;
+    double counter = 0;
     
     //Screen Variables
     String m_blankScreenStr = "                             ";
@@ -325,6 +334,8 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kFrontRight, true);
         m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kRearRight, true);
         
+        m_spikeRelay.set(Relay.Value.kOn);
+        
         while (isOperatorControl() && isEnabled()) {
             m_slowMotorSpeed = .4;
             
@@ -338,7 +349,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 stopRobot();
             }
             
-            //turbo button, may delete if not needed
+            //turbo buttgetRawButtonon, may delete if not needed
             
             if(m_xBox1.getRawAxis(3) < -0.5) {
                 m_slowMotorSpeed = 1;
@@ -378,9 +389,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 
             //this is from the right joystick
             //right and left, to make the robot spin
-            if (Math.abs(m_xBox1.getX(GenericHID.Hand.kRight)) > m_xb1DeadZone)
-            {
-                m_rotation = scaledInput(m_xBox1.getRawAxis(4));
+            if (Math.abs(m_xBox1.getRawAxis(4)) > m_xb1DeadZone)
+            { 
+                m_rotation = scaledInput(m_xBox1.getRawAxis(4)) + m_rotationFactor;
                 m_rotation = m_rotation * m_slowMotorSpeed;  //add if we need to slow her down.
             }
             else
@@ -448,18 +459,18 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
             
             //debug code
-            if (m_magnitude != 0)
-            {
-                System.out.println("Magnitude: " + m_magnitude);
-            }
-            if (Math.abs(m_xb1_ax1) > 0 || Math.abs(m_xb1_ax2) > 0)
-            {
-                System.out.println("Direction: " + m_direction);
-            }
-            if (m_rotation != 0)
-            {
-                System.out.println("Rotation: " + m_rotation);
-            }            
+//            if (m_magnitude != 0)
+//            {
+//                System.out.println("Magnitude: " + m_magnitude);
+//            }
+//            if (Math.abs(m_xb1_ax1) > 0 || Math.abs(m_xb1_ax2) > 0)
+//            {
+//                System.out.println("Direction: " + m_direction);
+//            }
+//            if (m_rotation != 0)
+//            {
+//                System.out.println("Rotation: " + m_rotation);
+//            }            
 //            if (m_xb1_ax1 != 0)
 //            {
 //                System.out.println("Axis 1 = "+ m_xb1_ax1);
@@ -476,10 +487,10 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 //            {
 //                System.out.println("Axis 4 = "+ m_xb1_ax4);
 //            }
-//            if (m_xb1_ax5 != 0)
-//            {
-//                System.out.println("Axis 5 = "+ m_xb1_ax5);
-//            }
+            if (m_xb1_ax5 != 0)
+            {
+                System.out.println("Axis 5 = "+ m_xb1_ax5);
+            }
 //            if (m_xb1_ax6 != 0)
 //            {
 //                System.out.println("Axis 6 = "+ m_xb1_ax6);
@@ -599,40 +610,71 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             //  corisponding level of power of rotation. 
             // EveryTime the robot sees a target, though the vision processing will update a global variable for each target which is then passed to this logic.
             // Targeting Logic
-//            if (m_rotationCenterHigh > 0){
-//                // all will rotate counter clock
-//                if (m_rotationCenterHigh >= .75 && m_rotationCenterHigh < .5) {
-//                    //set rotation 50%
-//                }
-//                else if (m_rotationCenterHigh >= .5 && m_rotationCenterHigh < .25) {
-//                    //set rotation 40%
-//                }
-//                else if (m_rotationCenterHigh >= .25 && m_rotationCenterHigh < .1) {
-//                    //set rotation 30%
-//                }
-//                else if (m_rotationCenterHigh >= .1) {
-//                    //set rotation 15%
-//                }
-//            }
-//            if (m_rotationCenterHigh < 0) {
-//                // all will rotate clockwise
-//                if (m_rotationCenterHigh <= -.75 && m_rotationCenterHigh > -.5) {
-//                    //set rotation 50%
-//                }
-//                else if (m_rotationCenterHigh <= -.5 && m_rotationCenterHigh > -.25) {
-//                    //set rotation 40%
-//                }
-//                else if (m_rotationCenterHigh <= -.25 && m_rotationCenterHigh > -.1) {
-//                    //set rotation 30%
-//                }
-//                else if (m_rotationCenterHigh <= -.1) {
-//                    //set rotation 15%
-//                }
-//            }
+            if (m_rotationCenterHigh > 0){
+                // all will rotate counter clock
+                if (m_rotationCenterHigh >= .75 && m_rotationCenterHigh < .5) {
+                    //set rotation 50%
+                    m_rotationFactor = .5;
+                }
+                else if (m_rotationCenterHigh >= .5 && m_rotationCenterHigh < .25) {
+                    //set rotation 40%
+                    m_rotationFactor = .4;
+                }
+                else if (m_rotationCenterHigh >= .25 && m_rotationCenterHigh < .1) {
+                    //set rotation 30%
+                    m_rotationFactor = .3;
+                }
+                else if (m_rotationCenterHigh >= .1) {
+                    //set rotation 15%
+                    m_rotationFactor = .15;
+                }
+            }
+            if (m_rotationCenterHigh < 0) {
+                // all will rotate clockwise
+                if (m_rotationCenterHigh <= -.75 && m_rotationCenterHigh > -.5) {
+                    //set rotation 50%
+                    m_rotationFactor = -.5;
+                }
+                else if (m_rotationCenterHigh <= -.5 && m_rotationCenterHigh > -.25) {
+                    //set rotation 40%
+                    m_rotationFactor = -.4;
+                }
+                else if (m_rotationCenterHigh <= -.25 && m_rotationCenterHigh > -.1) {
+                    //set rotation 30%
+                    m_rotationFactor = -.3;
+                }
+                else if (m_rotationCenterHigh <= -.1) {
+                    //set rotation 15%
+                    m_rotationFactor = -.15;
+                }
+            }
             
+//            if (m_xBox1.getRawButton(1) == true && depressed == false) {
+//                counter = counter + .1;
+//                m_lightController.set(counter);
+//                if (counter == 1) {
+//                    counter = 0;
+//                }
+//                depressed = true;
+//            }
+//            if (m_xBox1.getRawButton(1) == false && depressed == true) {
+//                depressed = false;
+//            }
+            if (Math.abs(m_xBox1.getRawAxis(5)) > m_xb1DeadZone)
+            {
+                //m_xb1_ax5 = scaledInput(m_xBox1.getRawAxis(5));
+                m_lightController.set(Math.abs(scaledInput(m_xBox1.getRawAxis(5))));
+            }
+            else
+            {
+               //m_xb1_ax5 = 0;
+                m_lightController.set(0);
+            }
             // End Targeting Logic
+            m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
             if (!m_xBox2.getRawButton(4) || !m_xBox2.getRawButton(3) || !m_xBox2.getRawButton(2)) {
-                m_mecanumDrive.mecanumDrive_Polar(m_magnitude, m_direction, m_rotation);
+                
+
             }
             
             
@@ -804,26 +846,32 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                            //m_highTargetVisible = true;
                            m_rotationCenterHigh = report.center_mass_x_normalized;
                            System.out.println("particle: " + i + " is a High Goal  centerX: " + m_rotationCenterHigh + " centerY: " + report.center_mass_y_normalized);
-                           
                            double m_localDistance = computeDistance(thresholdImage, report, i, false);
                           if (m_localDistance < (m_distanceCenterTarget * 1.25)){
-                           m_average = (m_localDistance + m_tempVariable + m_distanceCenterTarget)/3;
-                           m_distanceCenterTarget = m_tempVariable;
-                           m_tempVariable = m_localDistance;
-                           System.out.println("Distance: " + m_distanceCenterTarget); 
+                            m_average = (m_localDistance + m_tempVariable + m_distanceCenterTarget)/3;
+                            m_distanceCenterTarget = m_tempVariable;
+                            m_tempVariable = m_localDistance;
+//                            System.out.println("Distance: " + m_distanceCenterTarget); 
                           }
                           updateScreen(2,("TargetDis: " + m_distanceCenterTarget) );
-                           System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
-                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
+//                           System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
+//                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
                          
 
                        } else if (scoreCompare(scores[i], true)) {
                            //m_middleTargetVisible = true;
+//                           System.out.println("particle: " + i + " is a Middle Goal  centerX: " + m_rotationCenterMiddle + " centerY: " + report.center_mass_y_normalized);
                            m_rotationCenterMiddle = report.center_mass_x_normalized; 
-                           System.out.println("particle: " + i + " is a Middle Goal  centerX: " + m_rotationCenterMiddle + " centerY: " + report.center_mass_y_normalized);
-                           System.out.println("Distance: " + computeDistance(thresholdImage, report, i, true));
-                           System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
-                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
+                           double m_localDistance = computeDistance(thresholdImage, report, i, false);
+                           if (m_localDistance < (m_distanceMiddleTarget * 1.25)){
+                             m_average = (m_localDistance + m_tempVariable2 + m_distanceMiddleTarget)/3;
+                             m_distanceMiddleTarget = m_tempVariable2;
+                             m_tempVariable2 = m_localDistance;
+//                             System.out.println("Distance: " + m_distanceMiddleTarget); 
+                           }
+                           updateScreen(2,("TargetDis: " + m_distanceCenterTarget) );
+//                           System.out.println("rect: " + scores[i].rectangularity + " ARinner: " + scores[i].aspectRatioInner);
+//                           System.out.println("ARouter: " + scores[i].aspectRatioOuter + " xEdge: " + scores[i].xEdge + " yEdge: " + scores[i].yEdge);
                           
                             
 
