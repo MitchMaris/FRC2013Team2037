@@ -7,7 +7,7 @@
 
 
 //Version
-// 0.1.7
+// 0.1.8
 //Modified for new wireing plan.
 
 package edu.wpi.first.wpilibj.templates;
@@ -101,11 +101,13 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //robot Drive actual layout is frontLeft, frontRight, rearRight, rearLeft
     //RobotDrive m_mecanumDrive = new RobotDrive(1,4,2,3);
     RobotDrive m_mecanumDrive = new RobotDrive(9,8,2,3);
-    SpeedController m_shooterDriveFront = new Victor(7); //Konnor //Drive wheels for shooter 
-    SpeedController m_shooterDriveBack = new Jaguar(6);  //change if using Victor 
+    SpeedController m_shooterDrive = new Victor(7); //Konnor //Drive wheels for shooter 
+    SpeedController m_shooterDrive2 = new Victor(6); //Konnor //Drive wheels for shooter 
+    SpeedController m_shooterDrive3 = new Victor(5); //Konnor //Drive wheels for shooter 
+//    SpeedController m_shooterDriveBack = new Jaguar(6);  //change if using Victor 
     SpeedController m_lightController = new Jaguar(4);
-   //SpeedController m_lightController = new Jaguar(10);
-    Servo m_servoClutch = new Servo(10); 
+    //SpeedController m_lightController = new Jaguar(10);
+    //Servo m_servoClutch = new Servo(10); 
     //Servo m_servoRClutch = new Servo(10);
     //Servo m_servoVisionLR = new Servo(9);
     
@@ -119,13 +121,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //Relays
     Relay m_spikeShooterAngle = new Relay(1); //Konnor //Spike relay for controling angle motors
     
-    Relay m_spikeFrisPusherMotor = new Relay(3);
-    Relay m_spikeVisionGreenLED = new Relay(4);
+    Relay m_spikeShooterLift = new Relay(8);
     Relay m_spikeBlueLED = new Relay(5);
     Relay m_spikeRedLED = new Relay(6);
-    Relay m_spikeGreenLED = new Relay(7);
+    Relay m_spikeFrisbeePusher = new Relay(7);
     //Relay m_spikeRelay = new Relay(8);  //spikeRelay to blink a light via microSwitch1  //can be removed once we use it.
-    Relay m_spikeBatteryMotor = new Relay(8);
+    Relay m_spikeBatteryMotor = new Relay(4);
     
     
     //Vision
@@ -178,8 +179,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     double m_rotationFactor = 0; //The amount of rotation we modify the already rotation.
     
     //Light Controller Variables
-    boolean depressed = false;
-    double LEDBrightnessCounter = 0;
+    boolean m_ringLightDepressed = false;
+    double m_LEDBrightnessCounter = 0;
+    
+    //Light Controller Variables
+    boolean m_shooterSpeedDepressed = false;
+    double m_shooterSpeedCounter = 0;
     
     //Screen Variables
     String m_blankScreenStr = "                             ";
@@ -237,7 +242,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             screenThread.start();
             clearScreen();
             updateScreen(1, "robotInit()");
-            updateScreen(2, "screen, CHECK........");
+            updateScreen(2, "Screen, CHECK........");
             System.out.println("screenThread init complete....");
         }
         catch (Exception ex) {
@@ -252,20 +257,20 @@ public class FRC2013Team2037_Main extends SimpleRobot {
       
         m_spikeShooterAngle.set(Relay.Value.kOff);
         m_spikeBatteryMotor.set(Relay.Value.kOff);
-        m_spikeFrisPusherMotor.set(Relay.Value.kOff);
-        m_spikeVisionGreenLED.set(Relay.Value.kOff);
+        m_spikeShooterLift.set(Relay.Value.kOff);
+//        m_spikeVisionGreenLED.set(Relay.Value.kOff);
         m_spikeBlueLED.set(Relay.Value.kOff);
         m_spikeRedLED.set(Relay.Value.kOff);
-        m_spikeGreenLED.set(Relay.Value.kOff);
+        m_spikeFrisbeePusher.set(Relay.Value.kOff);
         
-        m_servoClutch.set(0);
+//        m_servoClutch.set(0);
        // m_servoRClutch.set(0);
         
         
         try {
             m_gyro.reset();
             Timer.delay(.5);
-            updateScreen(3, "Gyro, GOOD........");
+            updateScreen(3, "Gyro, CHECK........");
             System.out.println("Gyro init complete....");
         } 
         catch(Exception ex) {
@@ -278,15 +283,15 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             
             Thread visionThread = new Thread(visionProcessingTask);
             visionThread.start();
-            updateScreen(4, "vision, CHECK........");
+            updateScreen(4, "Vision, CHECK........");
             System.out.println("visionProcessingTask init complete....");
         }
         catch (Exception ex) {
-            updateScreen(4, "vision, FAILED!!!!!!!!");
+            updateScreen(4, "Vision, FAILED!!!!!!!!");
             System.out.println("visionProcessingTask init FAILED!!!!  Reason: " + ex);
         }
                 
-        updateScreen(5, "abcdefghijklmnopqrstuvwxyz1234567891011121314151617181920");
+        updateScreen(5, "Ready for Action");
 
         
     }
@@ -327,12 +332,19 @@ public class FRC2013Team2037_Main extends SimpleRobot {
        
         //local Teleop variables
         double m_xb1DeadZone = 0.165;  //we need to play with this number to see what needs to be changed
+        double m_xb2DeadZone = 0.165;  //we need to play with this number to see what needs to be changed
         double m_xb1_ax1;
         double m_xb1_ax2;
         double m_xb1_ax3;
         double m_xb1_ax4;
         double m_xb1_ax5;
         double m_xb1_ax6;
+        double m_xb2_ax1;
+        double m_xb2_ax2;
+        double m_xb2_ax3;
+        double m_xb2_ax4;
+        double m_xb2_ax5;
+        double m_xb2_ax6;
         double m_slowMotorSpeed;
         int loopCount = 1;
         
@@ -341,7 +353,7 @@ public class FRC2013Team2037_Main extends SimpleRobot {
         m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kFrontRight, true);
         m_mecanumDrive.setInvertedMotor(RobotDrive.MotorType.kRearRight, true);
         
-        // m_lightController.set(LEDBrightnessCounter);
+        // m_lightController.set(m_LEDBrightnessCounter);
 //           m_lightController.set(.5);
          
         while (isOperatorControl() && isEnabled()) {
@@ -366,6 +378,9 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             //quick test to see if you have the driver controller
             if (m_xBox1.getRawButton(7)) { //I want the input from the D pad for all of these .getRawAxis
                 updateScreen(6, "Driver Controller");
+            }
+            else if (m_xBox2.getRawButton(7)) { //I want the input from the D pad for all of these .getRawAxis
+                updateScreen(6, "Shooter Controller");
             }
             else {
                 updateScreen(6, m_blankScreenStr);
@@ -463,6 +478,61 @@ public class FRC2013Team2037_Main extends SimpleRobot {
             {
                 m_xb1_ax6 = 0;
             }
+            
+            //controller 2
+            if (Math.abs(m_xBox2.getRawAxis(1)) > m_xb2DeadZone)
+            {
+                m_xb2_ax2 = scaledInput(m_xBox2.getRawAxis(1));
+            }
+            else
+            {
+                m_xb2_ax1 = 0;
+            }
+
+            if (Math.abs(m_xBox2.getRawAxis(2)) > m_xb2DeadZone)
+            {
+                m_xb2_ax2 = scaledInput(m_xBox2.getRawAxis(2));
+            }
+            else
+            {
+                m_xb2_ax2 = 0;
+            }
+
+            if (Math.abs(m_xBox2.getRawAxis(3)) > m_xb2DeadZone)
+            {
+                m_xb2_ax3 = scaledInput(m_xBox2.getRawAxis(3));
+            }
+            else
+            {
+                m_xb2_ax3 = 0;
+            }
+
+            if (Math.abs(m_xBox2.getRawAxis(4)) > m_xb2DeadZone)
+            {
+                m_xb2_ax4 = scaledInput(m_xBox2.getRawAxis(4));
+            }
+            else
+            {
+                m_xb2_ax4 = 0;
+            }
+
+            if (Math.abs(m_xBox2.getRawAxis(5)) > m_xb2DeadZone)
+            {
+                m_xb2_ax5 = scaledInput(m_xBox2.getRawAxis(5));
+            }
+            else
+            {
+                m_xb2_ax5 = 0;
+            }
+
+            if (Math.abs(m_xBox2.getRawAxis(6)) > m_xb2DeadZone)
+            {
+                m_xb2_ax6 = scaledInput(m_xBox2.getRawAxis(6));
+            }
+            else
+            {
+                m_xb2_ax6 = 0;
+            }
             //end remove 
             
             
@@ -478,59 +548,89 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 //            if (m_rotation != 0)
 //            {
 //                System.out.println("Rotation: " + m_rotation);
-//            }            
+//            }   
+            
+            
 //            if (m_xb1_ax1 != 0)
 //            {
-//                System.out.println("Axis 1 = "+ m_xb1_ax1);
+//                System.out.println("m_xb1_ax1 "+ m_xb1_ax1);
 //            }
 //            if (m_xb1_ax2 != 0)
 //            {
-//                System.out.println("Axis 2 = "+ m_xb1_ax2);
+//                System.out.println("m_xb1_ax2 "+ m_xb1_ax2);
 //            }
 //            if (m_xb1_ax3 != 0)
 //            {
-//                System.out.println("Axis 3 = "+ m_xb1_ax3);
+//                System.out.println("m_xb1_ax3 "+ m_xb1_ax3);
 //            }
 //            if (m_xb1_ax4 != 0)
 //            {
-//                System.out.println("Axis 4 = "+ m_xb1_ax4);
+//                System.out.println("m_xb1_ax4 "+ m_xb1_ax4);
 //            }
 //            if (m_xb1_ax5 != 0)
 //            {
-//                System.out.println("Axis 5 = "+ m_xb1_ax5);
+//                System.out.println("m_xb1_ax5 "+ m_xb1_ax5);
 //            }
 //            if (m_xb1_ax6 != 0)
 //            {
-//                System.out.println("Axis 6 = "+ m_xb1_ax6);
+//                System.out.println("m_xb1_ax6 "+ m_xb1_ax6);
 //            }
+//            // controller 2           
+//            if (m_xb2_ax1 != 0)
+//            {
+//                System.out.println("m_xb2_ax1 "+ m_xb2_ax1);
+//            }
+//            if (m_xb2_ax2 != 0)
+//            {
+//                System.out.println("m_xb2_ax2 "+ m_xb2_ax2);
+//            }
+//            if (m_xb2_ax3 != 0)
+//            {
+//                System.out.println("m_xb2_ax3 "+ m_xb2_ax3);
+//            }
+//            if (m_xb2_ax4 != 0)
+//            {
+//                System.out.println("m_xb2_ax4 "+ m_xb2_ax4);
+//            }
+//            if (m_xb2_ax5 != 0)
+//            {
+//                System.out.println("m_xb2_ax5 "+ m_xb2_ax5);
+//            }
+            if (m_xb2_ax6 != 0)
+            {
+                System.out.println("m_xb2_ax6 " + m_xb2_ax6);
+            }
+            
             
             //Uncomment to see more debug lines
             //System.out.println("MicroSwitch1 says.... " + m_microSwitch1.get());
             //System.out.println("MicroSwitch2 says.... " + m_microSwitch2.get());
 //            System.out.println("SpikeRelay says....  " + m_spikeRelay.get());
+            
+//            System.out.println("Gyro Says....        " + m_gyroDataCurrent);
 //            System.out.println("Gyro Says....        " + m_gyroDataCurrent);
             
             
-            //microSwitch and spikeRelay testing code
-            if (m_microSwitch1.get() == false){
-               // m_spikeRelay.set(Relay.Value.kOff);
-            }
-            else {
-               // m_spikeRelay.set(Relay.Value.kForward);
-            }
+//            //microSwitch and spikeRelay testing code
+//            if (m_microSwitch1.get() == false){
+//               // m_spikeRelay.set(Relay.Value.kOff);
+//            }
+//            else {
+//               // m_spikeRelay.set(Relay.Value.kForward);
+//            }
             
-            // Konnor added this
-            if (m_xBox1.getRawAxis(6) == 1) {
-                //m_spikeShooterAngle.set(Relay.Value.kForward);
-                m_servoClutch.set(0);
-            }
-            else if (m_xBox1.getRawAxis(6) == -1) {
-               // m_spikeShooterAngle.set(Relay.Value.kReverse);
-                m_servoClutch.set(10);
-            }
-            else if (m_xBox1.getRawAxis(6) == 0){
-               // m_spikeShooterAngle.set(Relay.Value.kOff);
-            }
+//            // Konnor added this
+//            if (m_xBox1.getRawAxis(6) == 1) {
+//                //m_spikeShooterAngle.set(Relay.Value.kForward);
+//                m_servoClutch.set(0);
+//            }
+//            else if (m_xBox1.getRawAxis(6) == -1) {
+//               // m_spikeShooterAngle.set(Relay.Value.kReverse);
+//                m_servoClutch.set(10);
+//            }
+//            else if (m_xBox1.getRawAxis(6) == 0){
+//               // m_spikeShooterAngle.set(Relay.Value.kOff);
+//            }
             
             
 //            if (m_xBox1.getRawButton(4)) {
@@ -553,12 +653,12 @@ public class FRC2013Team2037_Main extends SimpleRobot {
 //            }
             
             
-            if (m_xBox1.getRawButton(5)) { //I want the input from the D pad for all of these .getRawAxis
+            if (m_xBox2.getRawButton(5)) { 
                 // If Dpad is up, drives the motors one direction
                 //m_spikeRelay2.set(Relay.Value.kOn);
                 m_spikeBatteryMotor.set(Relay.Value.kForward);
             }
-            else if (m_xBox1.getRawButton(6)) {
+            else if (m_xBox2.getRawButton(6)) {
                 // If Dpad is down, drives the motors the other direction
                 //m_spikeRelay2.set(Relay.Value.kOn);
                 m_spikeBatteryMotor.set(Relay.Value.kReverse);
@@ -568,25 +668,43 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 m_spikeBatteryMotor.set(Relay.Value.kOff);
             }
             
-            
-            if (m_xBox1.getRawButton(5) || m_xBox1.getRawButton(6)) {
-                System.out.println("Left Bump " + m_xBox1.getRawButton(5) + " Right Bump " + m_xBox1.getRawButton(6));
+            if (m_xBox2.getRawAxis(6) < 0) { 
+                // If Dpad is up, drives the motors one direction
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeShooterLift.set(Relay.Value.kForward);
+                System.out.println("m_spikeShooterLift kForward");
             }
+            else if (m_xBox2.getRawAxis(6) > 0) {
+                // If Dpad is down, drives the motors the other direction
+                //m_spikeRelay2.set(Relay.Value.kOn);
+                m_spikeShooterLift.set(Relay.Value.kReverse);
+                System.out.println("m_spikeShooterLift kReverse");
+            }
+            else {
+                //Turns off motors
+                m_spikeShooterLift.set(Relay.Value.kOff);
+            }
+            
+            
+            
+//            if (m_xBox2.getRawButton(5) || m_xBox2.getRawButton(6)) {
+//                System.out.println("Left Bump " + m_xBox2.getRawButton(5) + " Right Bump " + m_xBox2.getRawButton(6));
+//            }
             
             //System.out.println("ServoLC position " + m_servoLClutch.getPosition() + " ServoRC position " + m_servoRClutch.getPosition());
             // System.out.println("Shooter Front " + m_shooterFrontSpeed + " Shooter Back " + m_shooterBackSpeed);
             
             
-            m_shooterDriveFront.set(m_shooterFrontSpeed); //Shooter motors, front
-            m_shooterDriveBack.set(m_shooterBackSpeed); //Shooter motors, back
-            
+//            m_shooterDrive.set(m_shooterFrontSpeed); //Shooter motors, front
+//            m_shooterDriveBack.set(m_shooterBackSpeed); //Shooter motors, back
+//            
             
             // LED turns on when within range
 //            if (m_distanceCenterTarget < 200) {
-//                m_spikeGreenLED.set(Relay.Value.kOn);
+//                m_spikeFrisbeePusher.set(Relay.Value.kOn);
 //            }
 //            else {
-//                m_spikeGreenLED.set(Relay.Value.kOff);
+//                m_spikeFrisbeePusher.set(Relay.Value.kOff);
 //            }
 //            //Blinking light logic.
 //            if (** Needs criteria here **) {
@@ -659,30 +777,44 @@ public class FRC2013Team2037_Main extends SimpleRobot {
                 }
             }
             
-            if (m_xBox1.getRawButton(1) && depressed == false) {
-                LEDBrightnessCounter = LEDBrightnessCounter + .1;
-                if (LEDBrightnessCounter >= 1) {
-                    LEDBrightnessCounter = 0;
+            if (m_xBox2.getRawButton(4) && m_ringLightDepressed == false) {
+                m_LEDBrightnessCounter = m_LEDBrightnessCounter + .1;
+                if (m_LEDBrightnessCounter >= 1) {
+                    m_LEDBrightnessCounter = 0;
                 }
-                m_lightController.set(LEDBrightnessCounter);
-                depressed = true;
-                System.out.println("LEDBrightnessCounter # " + LEDBrightnessCounter);
+                m_lightController.set(m_LEDBrightnessCounter);
+                m_ringLightDepressed = true;
+                System.out.println("m_LEDBrightnessCounter # " + m_LEDBrightnessCounter);
             }
-            if (!m_xBox1.getRawButton(1) && depressed == true) {
-                depressed = false;
+            if (!m_xBox2.getRawButton(4) && m_ringLightDepressed == true) {
+                m_ringLightDepressed = false;
             }
             
             
-//            if (Math.abs(m_xBox1.getRawAxis(5)) > m_xb1DeadZone)
-//            {
-//                //m_xb1_ax5 = scaledInput(m_xBox1.getRawAxis(5));
-//                m_lightController.set(scaledInput(m_xBox1.getRawAxis(5)));
-//            }
-//            else
-//            {
-//               //m_xb1_ax5 = 0;
-//                m_lightController.set(0);
-//            }
+
+            if (m_xBox2.getRawButton(1) && m_shooterSpeedDepressed == false) {
+                m_shooterSpeedCounter = m_shooterSpeedCounter + .25;
+                if (m_shooterSpeedCounter >= 1.1) {
+                    m_shooterSpeedCounter = 0;
+                }
+                m_shooterDrive.set(m_shooterSpeedCounter);
+                m_shooterSpeedDepressed = true;
+                System.out.println("m_shooterSpeedCounter # " + m_shooterSpeedCounter);
+            }
+            if (!m_xBox2.getRawButton(1) && m_shooterSpeedDepressed == true) {
+                m_shooterSpeedDepressed = false;
+            }
+            
+            
+            if (Math.abs(scaledInput(m_xBox2.getRawAxis(5))) > 0.9)
+            {
+                m_spikeFrisbeePusher.set(Relay.Value.kForward);
+            }
+            else
+            {
+                m_spikeFrisbeePusher.set(Relay.Value.kOff);
+                
+            }
 //            // End Targeting Logic
            
 //            if (!m_xBox2.getRawButton(4) || !m_xBox2.getRawButton(3) || !m_xBox2.getRawButton(2)) {
@@ -739,11 +871,11 @@ public class FRC2013Team2037_Main extends SimpleRobot {
     //used to stop all moving robot parts and lights.
     public void stopRobot() {
         m_mecanumDrive.stopMotor();
-        m_shooterDriveFront.set(0); //Konnor //Drive wheels for shooter 
-        m_shooterDriveBack.set(0);
+        m_shooterDrive.set(0); //Konnor //Drive wheels for shooter 
+//        m_shooterDriveBack.set(0);
         m_spikeShooterAngle.set(Relay.Value.kOff);
         m_spikeBatteryMotor.set(Relay.Value.kOff);
-        m_spikeFrisPusherMotor.set(Relay.Value.kOff);
+        m_spikeShooterLift.set(Relay.Value.kOff);
       
     }
     
